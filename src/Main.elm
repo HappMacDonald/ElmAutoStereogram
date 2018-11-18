@@ -3,7 +3,9 @@ module ElmAutoStereogram exposing (main)
 {-| Web app that creates text-based MagicEye Autostereograms.
 
 Todo:
-* Make the tab nav links work, per https://package.elm-lang.org/packages/mdgriffith/elm-ui/latest/Element#link
+* Plaintext only portion rendering properly now, so..
+* Build out (with test suite!) the machinery to render the ascii Autostereogram
+  for some hard-coded phrase and placements. :)
 
 Here's my original design-doc:
 
@@ -52,44 +54,59 @@ import Debug
 
 main : Program Decode.Value Model Msg
 main =
-    Browser.application
-        { init =
-            init
-
-        , view =
-            view
-
-        , update =
-            update
-
-        , subscriptions =
-            subscriptions
-
-        , onUrlChange =
-            (\url -> UrlChange url)
-
-        , onUrlRequest =
-            (\_ -> Url.Url Url.Https "google.com" Nothing "/" Nothing Nothing |> UrlChange )
-
-        }
+  Browser.application
+    { init = init
+    , view = view
+    , update = update
+    , subscriptions = subscriptions
+    , onUrlChange = UrlChanged
+    , onUrlRequest = LinkClicked
+    }
 
 
 
 -- HELPERS AND DEFINITIONS
 
-type TabType =
-    TabPlaintext
-    | TabMarkdown
-    | TabCanvas
+type TabType
+  = TabPlaintext
+  | TabMarkdown
+  | TabImage
+
+
+outputRows : Int
+outputRows =
+  23
+
+
+outputColumns : Int
+outputColumns =
+  79
 
 
 -- MODEL
 
 
 type Model =
-    Model
-    {   tab: TabType
-    }
+  Model
+  { tab: TabType
+  , ascii: List String
+  }
+
+
+tabChange : Model -> Url.Url -> ( Model, Cmd Msg )
+tabChange ((Model modelRecord) as model) url =
+  case url.fragment of
+    Just "TabPlaintext" ->
+      ( Model { modelRecord | tab = TabPlaintext }, Nav.load (Url.toString url) )
+
+    Just "TabMarkdown" ->
+      ( Model { modelRecord | tab = TabMarkdown }, Nav.load (Url.toString url) )
+
+    Just "TabImage" ->
+      ( Model { modelRecord | tab = TabImage }, Nav.load (Url.toString url) )
+
+    _ ->
+      ( model, Cmd.none )
 
 
 
@@ -97,11 +114,17 @@ type Model =
 
 init : Decode.Value -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url key =
-  ( Model -- key url (Keycloak.validate flags)
-    { tab = TabPlaintext
-    } 
-  , Cmd.none
-  )
+  let
+    x=Debug.log "update msg=" url
+  in
+    tabChange
+    ( Model
+      { tab = TabPlaintext
+      , ascii = "@"
+        |>String.repeat outputColumns
+        |>List.repeat outputRows
+      }
+    ) url
 
 
 
@@ -109,22 +132,26 @@ init flags url key =
 
 
 type Msg
-    =   UrlChange Url.Url
+  = LinkClicked Browser.UrlRequest
+  | UrlChanged Url.Url
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-  -- case msg of
-  --   UrlChange location ->
-  --   ( Model
-  --     {   model
-  --     |   tab =
-  --             location.hash
+update msg ((Model modelRecord) as model) =
+  let
+    x=Debug.log "update msg=" msg
+  in
+    case msg of
+      LinkClicked urlRequest ->
+        case urlRequest of
+          Browser.Internal url ->
+            tabChange model url
+
+          Browser.External url ->
+            ( model, Nav.load url )
       
-  --     }
-  --   , Cmd.none
-  --   )
-  (model, Cmd.none)
+      UrlChanged url ->
+        ( model, Cmd.none )
 
 
 -- SUBSCRIPTIONS
@@ -144,60 +171,94 @@ tabColor =
   Element.rgb 0.9 0.8 0.7
 
 
+tabColorActive : Element.Color
+tabColorActive =
+  Element.rgb 1 1 1
+
+
 tabDivider : Element Msg
 tabDivider =
   Element.el
-  [ Element.width ( Element.fill |> Element.maximum 2 )
+  [ Element.width ( Element.fill |> Element.maximum 5 )
   ]
   ( Element.text "" )
 
 
-tab : String -> String -> Element Msg
-tab title _ =
-  Element.text title
-  |> Html.a []
-  |>Element.el
-    [ Border.roundEach
-      { topLeft = 3
-      , topRight = 3
-      , bottomLeft = 0
-      , bottomRight = 0
-      }
-    -- , Border.widthEach
-    --   { bottom = 0
-    --   , left = 2
-    --   , right = 2
-    --   , top = 2
-    --   }
-    , Border.color tabColor
-    , Background.color tabColor
-    , Element.fillPortion 1
-      |>Element.width
-    , Element.padding 5
-    , Font.center
+tab : Model -> TabType -> String -> String -> Element Msg
+tab (Model model) tabTarget title link =
+  let
+    backgroundColor = 
+      if tabTarget == model.tab then
+        tabColorActive
+      else
+        tabColor
+
+  in
+    Element.link
+    [ Element.centerX
+    , Element.width Element.fill
     ]
+    { url = link
+    , label = Element.text title
+    }
+    |>Element.el
+      [ Border.roundEach
+        { topLeft = 3
+        , topRight = 3
+        , bottomLeft = 0
+        , bottomRight = 0
+        }
+      -- , Border.widthEach
+      --   { bottom = 0
+      --   , left = 2
+      --   , right = 2
+      --   , top = 2
+      --   }
+      , Border.color tabColor
+      , Background.color backgroundColor
+      , Element.fillPortion 1
+        |>Element.width
+      , Element.padding 5
+      , Font.center
+      ]
 
 body : Model -> List ( Html Msg )
-body model =
+body ( (Model modelRecord) as model) =
   [ Element.layout
     [ Element.width Element.fill
     , Element.padding 10
     -- , Element.explain Debug.todo
     ]
-    <| Element.row
-    [ Element.centerX
-    , Element.width
-      ( Element.fill
-        |> Element.maximum 600
-        |> Element.minimum 600
-      )
-    ]
-    [ tab "Plain Text" "TabText"
-    , tabDivider
-    , tab "Reddit Markdown" "TabMarkdown"
-    , tabDivider
-    , tab "Downloadable Image" "TabImage"
-    ]
+    <|Element.column
+      [ Element.centerX
+--      , Element.width
+--        ( Element.fill
+--          |> Element.maximum 600
+--          |> Element.minimum 600
+--        )
+      ]
+      [ Element.row
+        [ Element.centerX
+        , Element.width Element.fill
+        ]
+        [ tab model TabPlaintext "Plain Text" "#TabPlaintext"
+        , tabDivider
+        , tab model TabMarkdown "Reddit Markdown" "#TabMarkdown"
+        , tabDivider
+        , tab model TabImage "Downloadable Image" "#TabImage"
+        ]
+      , Element.column
+        [ Border.width 2
+        , Border.color (Element.rgb 0 0 0)
+        , Background.color (Element.rgb 1 1 1)
+        , Font.family [ Font.typeface "Courier" ]
+        , Element.paddingXY 8 8
+        ]
+        ( modelRecord.ascii
+          |>List.map
+            (\string -> Element.text string)
+        )
+      ]
   ]
 
 view : Model -> Browser.Document Msg
