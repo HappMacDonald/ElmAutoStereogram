@@ -2,16 +2,15 @@ module ElmAutoStereogram exposing (main)
 
 {-| Web app that creates text-based MagicEye Autostereograms.
 
-BUGS:
-* Testing the Dictionary module
-* Have temporary method "testDictionary" at bottom of this file to speed up manual testing of that.
-* That gets called with hard-coded random seed ints, and then appended to the label of "Plain Text" tab.
-* 0,1,2 all give long words (statistically unlikely) while 3 gives a logic error. D:
-
 Todo:
 * Plaintext only portion rendering properly now, so..
 * Build out (with test suite!) the machinery to render the ascii Autostereogram
   for some hard-coded phrase and placements. :)
+* Testing the Dictionary module
+* Have temporary method "testDictionary" at bottom of this file to speed up manual testing of that.
+* That gets called with hard-coded random seed ints, and then appended to the label of "Plain Text" tab.
+* So next thing is I need to figure out next step... ;P
+** Probably reading the JS code to see how it begins?
 
 Here's my original design-doc:
 
@@ -23,7 +22,8 @@ Tabs to switch between output modes would be really helpful:
 * markdown code — text you can copy and paste into Reddit submissions or comments that will render as desired
 * and viewing canvas — would allow folk to right click and save-as-png or copy-image to avoid needing to know how to use a snipping tool
 
-Using sliders to position the text instead of making folk enter a column number, and rendering in real time upon changes would also be pretty hip. :B
+Using movable text grabbies to position the text instead of making folk enter a column number, and rendering in real time upon changes would also be pretty hip. :B
+Now if I use movable text grabbies, I wonder how challenging it would really be to feature multiple words per line? Hmm...
 -}
 
 import Dictionary
@@ -255,7 +255,7 @@ body ( (Model modelRecord) as model) =
         [ Element.centerX
         , Element.width Element.fill
         ]
-        [ tab model TabPlaintext ("Plain Text" ++ (testDictionary 3)) "#TabPlaintext"
+        [ tab model TabPlaintext ("Plain Text" ++ (testDictionary 7)) "#TabPlaintext"
         , tabDivider
         , tab model TabMarkdown "Reddit Markdown" "#TabMarkdown"
         , tabDivider

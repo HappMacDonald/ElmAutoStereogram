@@ -9,6 +9,9 @@ import Maybe exposing (Maybe)
 import Random
 
 
+-- Arbitrary helper functions
+
+
 maybeTuplePair : Maybe a -> Maybe b -> Maybe (a,b)
 maybeTuplePair maybeA maybeB =
   case maybeA of
@@ -24,6 +27,10 @@ maybeTuplePair maybeA maybeB =
           Just (a, b)
 
 
+decrement : Int -> Int
+decrement value =
+  value - 1
+
 
 dictionaryGreatestLength : Int
 dictionaryGreatestLength =
@@ -37,12 +44,34 @@ dictionaryLengthCounts =
       Array.length
 
 
+dictionaryFlat : Array String
+dictionaryFlat =
+  Array.foldl
+    Array.append
+    Array.empty
+    dictionary
+
+
 getOne : Random.Seed -> (String, Random.Seed)
 getOne seed0 =
-  getOneByLength
-  ( Random.step (Random.int 1 dictionaryGreatestLength) seed0
-  )
-  |>Maybe.withDefault ("logicerror", Random.initialSeed 0) -- That state SHOULD be unreachable, unless this code itself is broken somehow or somewhere.
+  let
+    length =
+      Array.length dictionaryFlat
+
+    last =
+      decrement length
+
+    (which, seed1) =
+      Random.step (Random.int 1 last) seed0
+
+    result =
+      Array.get which dictionaryFlat
+      |>Maybe.withDefault "logicerror"
+       -- ^^ logicerror state SHOULD be unreachable,
+       -- unless this code itself is broken somehow or somewhere.
+
+  in
+    (result, seed1)
 
 
 getOneByLength : (Int, Random.Seed) -> Maybe (String, Random.Seed)
@@ -52,19 +81,22 @@ getOneByLength (length, seed0) =
       Array.get length dictionary
 
     maybeCount =
-      Maybe.map
-        Array.length 
-        maybeWordsByLength
+      Maybe.map Array.length maybeWordsByLength
+      |>Debug.log "maybeCount:" 
+
+    maybeLast =
+      Maybe.map decrement maybeCount
 
     maybeWhichAndSeed1 = 
       Maybe.map2
         Random.step
         ( Maybe.map2
           Random.int
-          ( Just 1 )
-          maybeCount
+          ( Just 0 )
+          maybeLast
         )
         ( Just seed0 )
+
   in
     case maybeWhichAndSeed1 of
       Nothing ->
@@ -77,14 +109,20 @@ getOneByLength (length, seed0) =
               Array.get
                 ( Just which )
                 maybeWordsByLength
-            |>Maybe.withDefault Nothing -- collapse potential for argument failure with potential for Array.get call failure
+            |>Maybe.withDefault Nothing
+            -- ^^ collapse potential for argument failure with potential for
+            -- Array.get call failure
         in
           maybeTuplePair maybeResultWord ( Just seed1 )
 
 
 dictionary : Array ( Array String )
 dictionary =
-  [ [ "a" -- one letter long words
+  [ []
+    -- ^^ zero words that are zero letters long..
+    -- and we should never try to choose this length, either.
+    -- This placeholder just serves to ensure that index 1 -> "length 1".
+  , [ "a" -- one letter long words
     , "i"
     ]
   -- two letter long words
@@ -2988,6 +3026,7 @@ dictionary =
     , "handwriting"
     , "interesting"
     , "schoolhouse"
+    , "placeholder"
     ]
   -- twelve letter long words
   , [ "butterscotch"
