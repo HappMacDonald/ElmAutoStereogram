@@ -2,6 +2,12 @@ module ElmAutoStereogram exposing (main)
 
 {-| Web app that creates text-based MagicEye Autostereograms.
 
+BUGS:
+* Testing the Dictionary module
+* Have temporary method "testDictionary" at bottom of this file to speed up manual testing of that.
+* That gets called with hard-coded random seed ints, and then appended to the label of "Plain Text" tab.
+* 0,1,2 all give long words (statistically unlikely) while 3 gives a logic error. D:
+
 Todo:
 * Plaintext only portion rendering properly now, so..
 * Build out (with test suite!) the machinery to render the ascii Autostereogram
@@ -19,6 +25,8 @@ Tabs to switch between output modes would be really helpful:
 
 Using sliders to position the text instead of making folk enter a column number, and rendering in real time upon changes would also be pretty hip. :B
 -}
+
+import Dictionary
 
 import Html
     exposing
@@ -47,6 +55,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Debug
+import Random
 
 
 -- PRIMARY DECLARATION
@@ -173,7 +182,12 @@ tabColor =
 
 tabColorActive : Element.Color
 tabColorActive =
-  Element.rgb 1 1 1
+  Element.rgb 0.8 0.7 0.6
+
+
+tabBorderColor : Element.Color
+tabBorderColor =
+  Element.rgb 0.95 0.85 0.75
 
 
 tabDivider : Element Msg
@@ -208,13 +222,13 @@ tab (Model model) tabTarget title link =
         , bottomLeft = 0
         , bottomRight = 0
         }
-      -- , Border.widthEach
-      --   { bottom = 0
-      --   , left = 2
-      --   , right = 2
-      --   , top = 2
-      --   }
-      , Border.color tabColor
+      , Border.widthEach
+        { bottom = 0
+        , left = 2
+        , right = 2
+        , top = 2
+        }
+      , Border.color tabBorderColor
       , Background.color backgroundColor
       , Element.fillPortion 1
         |>Element.width
@@ -241,7 +255,7 @@ body ( (Model modelRecord) as model) =
         [ Element.centerX
         , Element.width Element.fill
         ]
-        [ tab model TabPlaintext "Plain Text" "#TabPlaintext"
+        [ tab model TabPlaintext ("Plain Text" ++ (testDictionary 3)) "#TabPlaintext"
         , tabDivider
         , tab model TabMarkdown "Reddit Markdown" "#TabMarkdown"
         , tabDivider
@@ -266,3 +280,11 @@ view model =
   { title = "Title"
   , body = body model
   }
+
+testDictionary : Int -> String
+testDictionary q =
+  let
+    seed = Random.initialSeed q
+  in
+    Dictionary.getOne seed
+    |>Tuple.first 
