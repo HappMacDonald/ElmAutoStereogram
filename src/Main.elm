@@ -2,15 +2,17 @@ module ElmAutoStereogram exposing (main)
 
 {-| Web app that creates text-based MagicEye Autostereograms.
 
+Bugs:
+* I just figured out that while clicking tabs changes them, and while browsing directly to a
+  fragment-having URL sets the tab, pressing "back" or "forward" to dance through the history does not.
+** I do get a UrlChanged event fired, just no LinkClicked event fired.
+** Plus every LinkClicked event appears to get a corresponding UrlChanged event.
+** Thus I conclude that moving the machinery from LinkClicked to UrlFired ought to do the trick. 👍
+
 Todo:
-* Plaintext only portion rendering properly now, so..
-* Build out (with test suite!) the machinery to render the ascii Autostereogram
-  for some hard-coded phrase and placements. :)
-* Testing the Dictionary module
-* Have temporary method "testDictionary" at bottom of this file to speed up manual testing of that.
-* That gets called with hard-coded random seed ints, and then appended to the label of "Plain Text" tab.
-* So next thing is I need to figure out next step... ;P
-** Probably reading the JS code to see how it begins?
+* Have an initialPuzzle object to act as a hardcoded puzzle we'll begin working with.
+* Trying to build out a puzzleRender function next to actually create an autostereogram from
+  said puzzle data.
 
 Here's my original design-doc:
 
@@ -19,11 +21,17 @@ Now I just need to sit down and use some Elm to make the user interface way bett
 Tabs to switch between output modes would be really helpful:
 
 * viewing text — current method
-* markdown code — text you can copy and paste into Reddit submissions or comments that will render as desired
-* and viewing canvas — would allow folk to right click and save-as-png or copy-image to avoid needing to know how to use a snipping tool
+* markdown code — text you can copy and paste into Reddit submissions
+  or comments that will render as desired
+* and viewing canvas — would allow folk to right click and save-as-png
+  or copy-image to avoid needing to know how to use a snipping tool
 
-Using movable text grabbies to position the text instead of making folk enter a column number, and rendering in real time upon changes would also be pretty hip. :B
-Now if I use movable text grabbies, I wonder how challenging it would really be to feature multiple words per line? Hmm...
+Using movable text grabbies to position the text instead of making folk
+enter a column number, and rendering in real time upon changes
+would also be pretty hip. :B
+
+Now if I use movable text grabbies, I wonder how challenging
+it would really be to feature multiple words per line? Hmm...
 -}
 
 import Dictionary
@@ -92,14 +100,100 @@ outputColumns =
   79
 
 
--- MODEL
+type WordPlacement =
+  WordPlacement
+  { word : String -- what the word is
+  , left : Int -- how far from left edge of output it should begin
+  }
 
+
+type Puzzle =
+  Puzzle ( List ( List WordPlacement ) )
+
+
+puzzleRender : Puzzle -> List String
+puzzleRender puzzle =
+  "#"
+  |>String.repeat outputColumns
+  |>List.repeat outputRows
+
+-- MODEL
 
 type Model =
   Model
   { tab: TabType
   , ascii: List String
+  , puzzle: Puzzle
   }
+
+
+initialPuzzle : Puzzle
+initialPuzzle =
+  Puzzle
+  [ []
+  , []
+  , []
+  , []
+  , []
+  , []
+  , [ WordPlacement
+      { word = "stop", left = 34}
+    ]
+  , [ WordPlacement
+      { word = "wasting", left = 35}
+    ]
+  , [ WordPlacement
+      { word = "your", left = 37}
+    ]
+  , [ WordPlacement
+      { word = "time", left = 38}
+    ]
+  , []
+  , [ WordPlacement
+      { word = "get", left = 60}
+    ]
+  , [ WordPlacement
+      { word = "a", left = 62}
+    ]
+  , [ WordPlacement
+      { word = "life", left = 63}
+    ]
+  , []
+  , []
+  , []
+  , []
+  , []
+  , []
+  , []
+  , []
+  , []
+  ]
+
+
+
+-- INIT
+
+init : Decode.Value -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
+init flags url key =
+  let
+    x=Debug.log "update msg=" url
+  in
+    tabChange
+    ( Model
+      { tab = TabPlaintext
+      , puzzle = initialPuzzle
+      , ascii = puzzleRender initialPuzzle
+      }
+    ) url
+
+
+
+-- UPDATE
+
+
+type Msg
+  = LinkClicked Browser.UrlRequest
+  | UrlChanged Url.Url
 
 
 tabChange : Model -> Url.Url -> ( Model, Cmd Msg )
@@ -118,33 +212,6 @@ tabChange ((Model modelRecord) as model) url =
       ( model, Cmd.none )
 
 
-
--- INIT
-
-init : Decode.Value -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
-init flags url key =
-  let
-    x=Debug.log "update msg=" url
-  in
-    tabChange
-    ( Model
-      { tab = TabPlaintext
-      , ascii = "@"
-        |>String.repeat outputColumns
-        |>List.repeat outputRows
-      }
-    ) url
-
-
-
--- UPDATE
-
-
-type Msg
-  = LinkClicked Browser.UrlRequest
-  | UrlChanged Url.Url
-
-
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg ((Model modelRecord) as model) =
   let
@@ -154,13 +221,13 @@ update msg ((Model modelRecord) as model) =
       LinkClicked urlRequest ->
         case urlRequest of
           Browser.Internal url ->
-            tabChange model url
+            ( model, Cmd.none )
 
           Browser.External url ->
             ( model, Nav.load url )
       
       UrlChanged url ->
-        ( model, Cmd.none )
+        tabChange model url
 
 
 -- SUBSCRIPTIONS
@@ -255,7 +322,8 @@ body ( (Model modelRecord) as model) =
         [ Element.centerX
         , Element.width Element.fill
         ]
-        [ tab model TabPlaintext ("Plain Text" ++ (testDictionary 7)) "#TabPlaintext"
+        -- [ tab model TabPlaintext ("Plain Text" ++ (testDictionary 8)) "#TabPlaintext"
+        [ tab model TabPlaintext "Plain Text" "#TabPlaintext"
         , tabDivider
         , tab model TabMarkdown "Reddit Markdown" "#TabMarkdown"
         , tabDivider
@@ -275,11 +343,16 @@ body ( (Model modelRecord) as model) =
       ]
   ]
 
+
 view : Model -> Browser.Document Msg
 view model =
   { title = "Title"
   , body = body model
   }
+
+
+-- test/temporary scaffoldings
+
 
 testDictionary : Int -> String
 testDictionary q =
@@ -288,3 +361,5 @@ testDictionary q =
   in
     Dictionary.getOne seed
     |>Tuple.first 
+
+
