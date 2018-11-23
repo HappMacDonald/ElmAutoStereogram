@@ -3,11 +3,6 @@ module ElmAutoStereogram exposing (main)
 {-| Web app that creates text-based MagicEye Autostereograms.
 
 Bugs:
-* I just figured out that while clicking tabs changes them, and while browsing directly to a
-  fragment-having URL sets the tab, pressing "back" or "forward" to dance through the history does not.
-** I do get a UrlChanged event fired, just no LinkClicked event fired.
-** Plus every LinkClicked event appears to get a corresponding UrlChanged event.
-** Thus I conclude that moving the machinery from LinkClicked to UrlFired ought to do the trick. 👍
 
 Todo:
 * Have an initialPuzzle object to act as a hardcoded puzzle we'll begin working with.
@@ -113,7 +108,7 @@ type Puzzle =
 
 puzzleRender : Puzzle -> List String
 puzzleRender puzzle =
-  "#"
+  "3"
   |>String.repeat outputColumns
   |>List.repeat outputRows
 
@@ -121,7 +116,9 @@ puzzleRender puzzle =
 
 type Model =
   Model
-  { tab: TabType
+  { navKey: Nav.Key
+  , currentUrl: Url.Url
+  , tab: TabType
   , ascii: List String
   , puzzle: Puzzle
   }
@@ -174,13 +171,15 @@ initialPuzzle =
 -- INIT
 
 init : Decode.Value -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
-init flags url key =
+init flags url navKey =
   let
-    x=Debug.log "update msg=" url
+    x=Debug.log "init msg=" url
   in
     tabChange
     ( Model
-      { tab = TabPlaintext
+      { navKey = navKey
+      , currentUrl = url
+      , tab = TabPlaintext
       , puzzle = initialPuzzle
       , ascii = puzzleRender initialPuzzle
       }
@@ -196,20 +195,35 @@ type Msg
   | UrlChanged Url.Url
 
 
-tabChange : Model -> Url.Url -> ( Model, Cmd Msg )
-tabChange ((Model modelRecord) as model) url =
-  case url.fragment of
-    Just "TabPlaintext" ->
-      ( Model { modelRecord | tab = TabPlaintext }, Nav.load (Url.toString url) )
-
+tabFragmentMap : Maybe String -> TabType
+tabFragmentMap fragment =
+  case fragment of
     Just "TabMarkdown" ->
-      ( Model { modelRecord | tab = TabMarkdown }, Nav.load (Url.toString url) )
+      TabMarkdown
 
     Just "TabImage" ->
-      ( Model { modelRecord | tab = TabImage }, Nav.load (Url.toString url) )
+      TabImage
 
-    _ ->
-      ( model, Cmd.none )
+    _ -> -- including Nothing and Just TabPlaintext
+      TabPlaintext
+
+
+tabChange : Model -> Url.Url -> ( Model, Cmd Msg )
+tabChange ((Model modelRecord) as model) url =
+  let
+    command =
+      if modelRecord.currentUrl == url then
+        Cmd.none
+      else
+        Nav.load (Url.toString url)
+  in
+    ( Model
+      { modelRecord
+      | tab = tabFragmentMap url.fragment
+      , currentUrl = url
+      }
+    , command
+    )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -221,11 +235,13 @@ update msg ((Model modelRecord) as model) =
       LinkClicked urlRequest ->
         case urlRequest of
           Browser.Internal url ->
-            ( model, Cmd.none )
+            ( model
+            , Nav.pushUrl modelRecord.navKey (Url.toString url)
+            )
 
           Browser.External url ->
             ( model, Nav.load url )
-      
+
       UrlChanged url ->
         tabChange model url
 
