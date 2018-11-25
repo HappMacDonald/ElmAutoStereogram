@@ -3,6 +3,17 @@ module Dictionary exposing
   , dictionaryLengthCounts
   , getOne
   , getOneByLength
+  , getAllByLength
+  , dictionarySplitList
+  , dictionaryFlatList
+  , shortestWord
+-- Should eventually be in a more generic module..
+  , maybeTuplePair
+  , decrement
+  , listFirstElement
+  , listFirstIndex
+  , listUpdateElement
+  , listGetElement
   )
 import Array exposing (Array)
 import Maybe exposing (Maybe)
@@ -10,6 +21,30 @@ import Random
 
 
 -- Arbitrary helper functions
+
+
+listGetElement : Int -> List a -> Maybe a
+listGetElement index list =
+  List.drop index list
+  |>List.head
+
+
+listUpdateElement : Int -> a -> a -> List a -> List a
+listUpdateElement index newElement emptyElement list =
+  let
+    shortfall =
+      index - (List.length list)
+      -- |>Debug.log "?"
+      
+    listLongEnough =
+      if shortfall >= 0
+      then list ++ ( List.repeat shortfall emptyElement )
+      else list
+      
+  in
+    List.take index listLongEnough
+    ++newElement
+    ::List.drop (index+1) list
 
 
 maybeTuplePair : Maybe a -> Maybe b -> Maybe (a,b)
@@ -32,6 +67,31 @@ decrement value =
   value - 1
 
 
+listFirstElement : (a -> Bool) -> List a -> Maybe a
+listFirstElement test list =
+  case list of
+    [] ->
+      Nothing
+
+    headElement :: remainingElements ->
+      if test headElement
+      then Just headElement
+      else listFirstElement test remainingElements
+
+
+
+listFirstIndex : (a -> Bool) -> Int -> List a -> Maybe Int
+listFirstIndex test currentIndex list =
+  case list of
+    [] ->
+      Nothing
+
+    headElement :: remainingElements ->
+      if test headElement
+      then Just currentIndex
+      else listFirstIndex test (currentIndex+1) remainingElements
+
+
 dictionaryGreatestLength : Int
 dictionaryGreatestLength =
   Array.length dictionary
@@ -50,6 +110,22 @@ dictionaryFlat =
     Array.append
     Array.empty
     dictionary
+
+
+dictionaryFlatList : List String
+dictionaryFlatList =
+  Array.toList dictionaryFlat
+
+
+{-| The length of the shortest word in our dictionary
+-}
+shortestWord : Int
+shortestWord =
+  listFirstIndex
+    (\length -> length > 0)
+    0
+    ( Array.toList dictionaryLengthCounts )
+  |>Maybe.withDefault 0
 
 
 getOne : Random.Seed -> (String, Random.Seed)
@@ -114,6 +190,20 @@ getOneByLength (length, seed0) =
             -- Array.get call failure
         in
           maybeTuplePair maybeResultWord ( Just seed1 )
+
+
+getAllByLength : Int -> Array String
+getAllByLength length =
+  dictionary
+  |>Array.get length
+  |>Maybe.withDefault Array.empty
+
+
+dictionarySplitList : List ( List String )
+dictionarySplitList =
+  dictionary
+  |>Array.toList
+  |>List.map (\array -> Array.toList array)
 
 
 dictionary : Array ( Array String )
