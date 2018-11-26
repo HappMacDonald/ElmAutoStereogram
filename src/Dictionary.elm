@@ -14,6 +14,7 @@ module Dictionary exposing
   , listFirstIndex
   , listUpdateElement
   , listGetElement
+  , listGetOne
   )
 import Array exposing (Array)
 import Maybe exposing (Maybe)
@@ -21,6 +22,28 @@ import Random
 
 
 -- Arbitrary helper functions
+
+{-| Feed in a list and a random seed, get a Maybe element from that list
+such that "Nothing" ought to only be possible if you've fed in an empty list.
+-}
+
+listGetOne : List a -> Random.Seed -> (Maybe a, Random.Seed)
+listGetOne list seed0 =
+  let
+    length =
+      List.length list
+
+    last =
+      decrement length
+
+    (which, seed1) =
+      Random.step (Random.int 1 last) seed0
+
+    result =
+      listGetElement which list
+
+  in
+    (result, seed1)
 
 
 listGetElement : Int -> List a -> Maybe a

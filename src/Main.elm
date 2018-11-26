@@ -139,6 +139,62 @@ type Puzzle =
   Puzzle ( List ( List WordPlacement ) )
 
 
+calcLeftRightLength : List PairList -> List PairList -> Int -> Random.Seed ->
+  { leftLength : Int
+  , rightLength : Int
+  , leftWordPairs : PairList
+  , rightWordPairs : PairList
+  , seedA1: Random.Seed
+  }
+calcLeftRightLength leftPairs rightPairs wordLength seedC0 =
+  let
+    (leftLength, seedC1) =
+      Random.step
+        ( Random.int
+            Dictionary.shortestWord
+            ( maxMessageLength
+            - wordLength
+            + Dictionary.shortestWord
+            )
+        )
+        seedC0
+
+    rightLength =
+      maxMessageLength - wordLength - leftLength + 2
+      -- yeah.. magic number "2" here disappoints me.
+      -- will need to research more what it's
+      -- real genesis and/or meaning is. :(
+  in
+    case
+      Dictionary.listGetElement leftLength leftPairs
+    of
+      Nothing ->
+        calcLeftRightLength leftPairs rightPairs wordLength seedC1
+
+      Just [] ->
+        calcLeftRightLength leftPairs rightPairs wordLength seedC1
+
+      Just rightWordPairs ->
+        case
+          Dictionary.listGetElement
+            rightLength rightPairs
+        of
+          Nothing -> 
+            calcLeftRightLength leftPairs rightPairs wordLength seedC1
+
+          Just [] ->
+            calcLeftRightLength leftPairs rightPairs wordLength seedC1
+                
+          Just leftWordPairs ->
+            { leftLength = leftLength
+            , rightLength = rightLength
+            , leftWordPairs = leftWordPairs
+            , rightWordPairs = rightWordPairs
+            , seedA1 = seedC1
+            }
+
+
+
 parallaxFill : (String, Random.Seed) -> (String, Random.Seed)
 parallaxFill (stringSoFar, seed0) =
   let
@@ -171,8 +227,8 @@ parallaxFill (stringSoFar, seed0) =
 
 
 
-puzzleRender : (Puzzle, Random.Seed) -> (List String, Random.Seed)
-puzzleRender (Puzzle puzzle, seed0) =
+puzzleRender : List PairList -> List PairList -> (Puzzle, Random.Seed) -> (List String, Random.Seed)
+puzzleRender leftPairs rightPairs (Puzzle puzzle, seed0) =
   puzzle
   |>List.foldr
       (\puzzleRow ( accumulator, seedA0 ) ->
@@ -203,25 +259,38 @@ puzzleRender (Puzzle puzzle, seed0) =
                   wordLength =
                     String.length word
 
-                  (leftLength, seedA1) =
-                    Random.step
-                      ( Random.int
-                          Dictionary.shortestWord
-                          ( maxMessageLength
-                          - wordLength
-                          + Dictionary.shortestWord
-                          )
-                      )
-                      seedA0
+                  { leftLength, rightLength, leftWordPairs, rightWordPairs, seedA1 } =
+                    calcLeftRightLength leftPairs rightPairs wordLength seedA0
 
-                  rightLength =
-                    maxMessageLength - wordLength - leftLength + 2
-                    -- yeah.. magic number "2" here disappoints me.
-                    -- will need to research more what it's
-                    -- real genesis and/or meaning is. :(
+                  ((leftWord0, leftWord1), seedA2) =
+                    Dictionary.listGetOne leftWordPairs seedA1
+                    |>Tuple.mapFirst (Maybe.withDefault ("logicError", "logicError"))
+
+                  ((rightWord0, rightWord1), seedA3) =
+                    Dictionary.listGetOne rightWordPairs seedA2
+                    |>Tuple.mapFirst (Maybe.withDefault ("logicError", "logicError"))
+
+                  leftPattern =
+                    ( leftWord0 ++ " "
+                    ++word ++ " "
+                    ++rightWord1 ++ " "
+                    )
+
+                  rightPattern =
+                    ( leftWord1 ++ " "
+                    ++word ++ " "
+                    ++rightWord0 ++ " "
+                    )
 
                 in
-                  Debug.todo "???"
+                  ( { offset = leftLength - ( modBy left parallax )
+                    , leftPattern = leftPattern
+                    , rightPattern = rightPattern
+                    , changeOver = left - leftLength
+                    }
+                  , seedA3
+                  )
+
 
           outputRow : String
           outputRow =
@@ -441,7 +510,7 @@ init flags url navKey =
   let
     -- x=Debug.log "init msg=" url
     (leftPairs, rightPairs) =
-      Debug.log "leftAndRightPairs" 
+      -- Debug.log "leftAndRightPairs" 
       leftAndRightPairs
 
     -- x=Debug.log
@@ -455,8 +524,8 @@ init flags url navKey =
       Random.initialSeed 0
 
     (ascii, seed1) =
-      ( List.repeat outputRows (String.repeat outputColumns "2"), seed0 )
-      -- puzzleRender (initialPuzzle, seed0)
+      -- ( List.repeat outputRows (String.repeat outputColumns "2"), seed0 )
+      puzzleRender leftPairs rightPairs (initialPuzzle, seed0)
 
   in
     tabChange
