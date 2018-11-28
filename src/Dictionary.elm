@@ -181,7 +181,7 @@ getOneByLength (length, seed0) =
 
     maybeCount =
       Maybe.map Array.length maybeWordsByLength
-      |>Debug.log "maybeCount:" 
+      -- |>Debug.log "maybeCount:" 
 
     maybeLast =
       Maybe.map decrement maybeCount

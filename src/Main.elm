@@ -3,15 +3,20 @@ module ElmAutoStereogram exposing (main)
 {-| Web app that creates text-based MagicEye Autostereograms.
 
 Bugs:
+* Sometimes the pattern it tries to pull from is too long (16 characters)
+  for an as yet not understood reason. Probably a magic number is off
+  somewhereplace? ;P
 
 Todo:
-* Have an initialPuzzle object to act as a hardcoded puzzle we'll begin working with.
-* Trying to build out a puzzleRender function next to actually create an autostereogram from
-  said puzzle data.
+* Have an initialPuzzle object to act as a hardcoded puzzle we'll begin working
+  with.
+* Trying to build out a puzzleRender function next to actually create an
+  autostereogram from said puzzle data.
 
 Here's my original design-doc:
 
-Now I just need to sit down and use some Elm to make the user interface way better.
+Now I just need to sit down and use some Elm to make the user interface
+way better.
 
 Tabs to switch between output modes would be really helpful:
 
@@ -116,6 +121,13 @@ spaceWidth : Int
 spaceWidth =
   1
 
+{-| When using more than one word to fill a space, make sure that
+the second word gets to be at least this long because otherwise
+we'll get too many tiny words everywhere. :/
+-}
+breathingRoom : Int
+breathingRoom =
+  3
 
 {-| We won't allow single messages longer than this
 Hardcoded to be 6 less than parallax for now.
@@ -164,14 +176,23 @@ calcLeftRightLength leftPairs rightPairs wordLength seedC0 =
       -- yeah.. magic number "2" here disappoints me.
       -- will need to research more what it's
       -- real genesis and/or meaning is. :(
+
+    -- x = Debug.log "active"
+    --     { leftLength = leftLength
+    --     , wordLength = wordLength
+    --     , rightLength = rightLength
+    --     , sum = leftLength + wordLength + rightLength
+    --     }
   in
     case
       Dictionary.listGetElement leftLength leftPairs
     of
       Nothing ->
+        -- try again, new random seed
         calcLeftRightLength leftPairs rightPairs wordLength seedC1
 
       Just [] ->
+        -- try again, new random seed
         calcLeftRightLength leftPairs rightPairs wordLength seedC1
 
       Just rightWordPairs ->
@@ -179,10 +200,12 @@ calcLeftRightLength leftPairs rightPairs wordLength seedC0 =
           Dictionary.listGetElement
             rightLength rightPairs
         of
-          Nothing -> 
+          Nothing ->
+            -- try again, new random seed
             calcLeftRightLength leftPairs rightPairs wordLength seedC1
 
           Just [] ->
+            -- try again, new random seed
             calcLeftRightLength leftPairs rightPairs wordLength seedC1
                 
           Just leftWordPairs ->
@@ -192,6 +215,7 @@ calcLeftRightLength leftPairs rightPairs wordLength seedC0 =
             , rightWordPairs = rightWordPairs
             , seedA1 = seedC1
             }
+            -- |>Debug.log ""
 
 
 
@@ -202,23 +226,23 @@ parallaxFill (stringSoFar, seed0) =
       parallax - (String.length stringSoFar)
 
     (chunkSize, seed1) =
-      Random.step (Random.int 1 remainingSize) seed0
+      Random.step (Random.int 1 (remainingSize - spaceWidth)) seed0
 
   in
     if
     ( (chunkSize < remainingSize - spaceWidth)
-    &&(chunkSize > remainingSize - spaceWidth - 2*Dictionary.shortestWord)
+    &&(chunkSize > remainingSize - 2*spaceWidth - breathingRoom)
     )
-    then parallaxFill (stringSoFar, seed1)
+    then parallaxFill (stringSoFar, seed1) -- try again, new random seed
     else
       case Dictionary.getOneByLength (chunkSize, seed1) of
         Nothing ->
-          parallaxFill (stringSoFar, seed1)
+          parallaxFill (stringSoFar, seed1) -- try again, new random seed
 
         Just (word, seed2) ->
           let
             newStringSoFar =
-              stringSoFar ++ " " ++ word
+              stringSoFar ++ word ++ " "
 
           in
             if String.length newStringSoFar >= parallax
@@ -227,7 +251,11 @@ parallaxFill (stringSoFar, seed0) =
 
 
 
-puzzleRender : List PairList -> List PairList -> (Puzzle, Random.Seed) -> (List String, Random.Seed)
+puzzleRender :
+  List PairList
+  -> List PairList
+  -> (Puzzle, Random.Seed)
+  -> (List String, Random.Seed)
 puzzleRender leftPairs rightPairs (Puzzle puzzle, seed0) =
   puzzle
   |>List.foldr
@@ -242,7 +270,7 @@ puzzleRender leftPairs rightPairs (Puzzle puzzle, seed0) =
 
                   (offset, seedA2) =
                     Random.step (Random.int 0 (parallax-spaceWidth) ) seedA1
-
+                  -- x = Debug.log "passive" { sum = String.length pattern }
                 in
                   -- we're only using one non-changing pattern here,
                   -- as there is no word to encode on this line.
@@ -259,42 +287,82 @@ puzzleRender leftPairs rightPairs (Puzzle puzzle, seed0) =
                   wordLength =
                     String.length word
 
-                  { leftLength, rightLength, leftWordPairs, rightWordPairs, seedA1 } =
+                  { leftLength
+                    , rightLength
+                    , leftWordPairs
+                    , rightWordPairs
+                    , seedA1
+                    } =
                     calcLeftRightLength leftPairs rightPairs wordLength seedA0
 
                   ((leftWord0, leftWord1), seedA2) =
                     Dictionary.listGetOne leftWordPairs seedA1
-                    |>Tuple.mapFirst (Maybe.withDefault ("logicError", "logicError"))
+                    |>Tuple.mapFirst
+                        (Maybe.withDefault ("logicError", "logicError"))
 
                   ((rightWord0, rightWord1), seedA3) =
                     Dictionary.listGetOne rightWordPairs seedA2
-                    |>Tuple.mapFirst (Maybe.withDefault ("logicError", "logicError"))
+                    |>Tuple.mapFirst
+                        (Maybe.withDefault ("logicError", "logicError"))
 
                   leftPattern =
                     ( leftWord0 ++ " "
                     ++word ++ " "
-                    ++rightWord1 ++ " "
+                    ++rightWord0 ++ " "
                     )
 
                   rightPattern =
                     ( leftWord1 ++ " "
                     ++word ++ " "
-                    ++rightWord0 ++ " "
+                    ++rightWord1 ++ " "
                     )
 
+                  -- x = Debug.log "active"
+                  --     { sumLeft = String.length leftPattern
+                  --     , sumRight = String.length rightPattern
+                  --     }
+
                 in
-                  ( { offset = leftLength - ( modBy left parallax )
+                  ( { offset = leftLength - ( modBy parallax left ) + parallax
                     , leftPattern = leftPattern
                     , rightPattern = rightPattern
                     , changeOver = left - leftLength
                     }
                   , seedA3
                   )
+                  |>Debug.log ""
 
 
           outputRow : String
           outputRow =
-            Debug.todo "String.repeat \"2\" 10"
+            -- Debug.todo "String.repeat \"2\" 10"
+            List.range 0 outputColumns
+            |>List.map
+                (\columnNumber ->
+                  let
+                    pattern =
+                      -- if columnNumber == outputRowGenerator.changeOver
+                      -- then "###############"
+                      -- else
+                        if columnNumber < outputRowGenerator.changeOver
+                        then outputRowGenerator.rightPattern
+                        else outputRowGenerator.leftPattern
+                      -- |>Debug.log "pattern"
+
+                    position =
+                      columnNumber + outputRowGenerator.offset
+                      |>modBy parallax
+
+                  in
+                    pattern
+                    |>String.dropLeft
+                        position
+                    |>String.uncons
+                    |>Maybe.withDefault (' ', "")
+                    |>Tuple.first
+
+                )
+            |>String.fromList
 
         in
           ( outputRow :: accumulator, seedB1 )
