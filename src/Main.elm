@@ -3,9 +3,7 @@ module ElmAutoStereogram exposing (main)
 {-| Web app that creates text-based MagicEye Autostereograms.
 
 Bugs:
-* Sometimes the pattern it tries to pull from is too long (16 characters)
-  for an as yet not understood reason. Probably a magic number is off
-  somewhereplace? ;P
+* If a WordPlacement word gets too long .. I get an infinite loop. ;P
 
 Todo:
 * Have an initialPuzzle object to act as a hardcoded puzzle we'll begin working
@@ -36,19 +34,8 @@ it would really be to feature multiple words per line? Hmm...
 
 import Dictionary
 
-import Html
-    exposing
-        (   Html
-        ,   div
---         ,   p
---         ,   h1
---         ,   li
---         ,   ol
---         ,   section
--- --        , text
---         ,   ul
-        )
--- import Html.Attributes as Attr
+import Html exposing (Html)
+import Html.Attributes as Attr
 -- import Html.Events exposing (onInput, onBlur)
 -- import Html.Events.Extra exposing (onEnter)
 -- import Dom exposing (focus)
@@ -62,8 +49,13 @@ import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Element.Input as Input
 import Debug
 import Random
+import Canvas
+import CanvasColor
+
+x = Debug.todo "Wait! Gotta run in Chrome, and fix the infinite loop problem. D:"
 
 
 -- PRIMARY DECLARATION
@@ -85,8 +77,8 @@ main =
 -- HELPERS AND DEFINITIONS
 
 type TabType
-  = TabPlaintext
-  | TabMarkdown
+  = TabEdit
+  | TabPlainText
   | TabImage
 
 
@@ -195,7 +187,7 @@ calcLeftRightLength leftPairs rightPairs wordLength seedC0 =
         -- try again, new random seed
         calcLeftRightLength leftPairs rightPairs wordLength seedC1
 
-      Just rightWordPairs ->
+      Just leftWordPairs ->
         case
           Dictionary.listGetElement
             rightLength rightPairs
@@ -208,7 +200,7 @@ calcLeftRightLength leftPairs rightPairs wordLength seedC0 =
             -- try again, new random seed
             calcLeftRightLength leftPairs rightPairs wordLength seedC1
                 
-          Just leftWordPairs ->
+          Just rightWordPairs ->
             { leftLength = leftLength
             , rightLength = rightLength
             , leftWordPairs = leftWordPairs
@@ -251,123 +243,134 @@ parallaxFill (stringSoFar, seed0) =
 
 
 
-puzzleRender :
-  List PairList
-  -> List PairList
-  -> (Puzzle, Random.Seed)
-  -> (List String, Random.Seed)
-puzzleRender leftPairs rightPairs (Puzzle puzzle, seed0) =
-  puzzle
-  |>List.foldr
-      (\puzzleRow ( accumulator, seedA0 ) ->
-        let
-          ( outputRowGenerator, seedB1 ) =
-            case puzzleRow of
-              [] ->
-                let
-                  (pattern, seedA1) =
-                    parallaxFill ("", seedA0)
+puzzleRender
+  : (Puzzle, Random.Seed)
+  ->(List String, Random.Seed)
+puzzleRender (Puzzle puzzle, seed0) =
+  let
+    (leftPairs, rightPairs) =
+      -- Debug.log "leftAndRightPairs" 
+      leftAndRightPairs
 
-                  (offset, seedA2) =
-                    Random.step (Random.int 0 (parallax-spaceWidth) ) seedA1
-                  -- x = Debug.log "passive" { sum = String.length pattern }
-                in
-                  -- we're only using one non-changing pattern here,
-                  -- as there is no word to encode on this line.
-                  ( { offset = offset
-                    , leftPattern = pattern
-                    , rightPattern = pattern
-                    , changeOver = 0
-                    }
-                  , seedA2
-                  )
+    -- x=Debug.log
+    --     "first fail leftPairs"
+    --     Dictionary.listFirstIndex
+    --       (\list -> (List.length list) < 1)
+    --       Dictionary.shortestWord
+    --       leftPairs
 
-              ( WordPlacement {word, left} ) :: _ ->
-                let
-                  wordLength =
-                    String.length word
-
-                  { leftLength
-                    , rightLength
-                    , leftWordPairs
-                    , rightWordPairs
-                    , seedA1
-                    } =
-                    calcLeftRightLength leftPairs rightPairs wordLength seedA0
-
-                  ((leftWord0, leftWord1), seedA2) =
-                    Dictionary.listGetOne leftWordPairs seedA1
-                    |>Tuple.mapFirst
-                        (Maybe.withDefault ("logicError", "logicError"))
-
-                  ((rightWord0, rightWord1), seedA3) =
-                    Dictionary.listGetOne rightWordPairs seedA2
-                    |>Tuple.mapFirst
-                        (Maybe.withDefault ("logicError", "logicError"))
-
-                  leftPattern =
-                    ( leftWord0 ++ " "
-                    ++word ++ " "
-                    ++rightWord0 ++ " "
-                    )
-
-                  rightPattern =
-                    ( leftWord1 ++ " "
-                    ++word ++ " "
-                    ++rightWord1 ++ " "
-                    )
-
-                  -- x = Debug.log "active"
-                  --     { sumLeft = String.length leftPattern
-                  --     , sumRight = String.length rightPattern
-                  --     }
-
-                in
-                  ( { offset = leftLength - ( modBy parallax left ) + parallax
-                    , leftPattern = leftPattern
-                    , rightPattern = rightPattern
-                    , changeOver = left - leftLength
-                    }
-                  , seedA3
-                  )
-                  |>Debug.log ""
-
-
-          outputRow : String
-          outputRow =
-            -- Debug.todo "String.repeat \"2\" 10"
-            List.range 0 outputColumns
-            |>List.map
-                (\columnNumber ->
+  in
+    puzzle
+    |>List.foldr
+        (\puzzleRow ( accumulator, seedA0 ) ->
+          let
+            ( outputRowGenerator, seedB1 ) =
+              case puzzleRow of
+                [] ->
                   let
-                    pattern =
-                      -- if columnNumber == outputRowGenerator.changeOver
-                      -- then "###############"
-                      -- else
-                        if columnNumber < outputRowGenerator.changeOver
-                        then outputRowGenerator.rightPattern
-                        else outputRowGenerator.leftPattern
-                      -- |>Debug.log "pattern"
+                    (pattern, seedA1) =
+                      parallaxFill ("", seedA0)
 
-                    position =
-                      columnNumber + outputRowGenerator.offset
-                      |>modBy parallax
+                    (offset, seedA2) =
+                      Random.step (Random.int 0 (parallax-spaceWidth) ) seedA1
+                    -- x = Debug.log "passive" { sum = String.length pattern }
+                  in
+                    -- we're only using one non-changing pattern here,
+                    -- as there is no word to encode on this line.
+                    ( { offset = offset
+                      , leftPattern = pattern
+                      , rightPattern = pattern
+                      , changeOver = 0
+                      }
+                    , seedA2
+                    )
+
+                ( WordPlacement {word, left} ) :: _ ->
+                  let
+                    wordLength =
+                      String.length word
+
+                    { leftLength
+                      , rightLength
+                      , leftWordPairs
+                      , rightWordPairs
+                      , seedA1
+                      } =
+                      calcLeftRightLength leftPairs rightPairs wordLength seedA0
+
+                    ((leftWord0, leftWord1), seedA2) =
+                      Dictionary.listGetOne leftWordPairs seedA1
+                      |>Tuple.mapFirst
+                          (Maybe.withDefault ("logicError", "logicError"))
+
+                    ((rightWord0, rightWord1), seedA3) =
+                      Dictionary.listGetOne rightWordPairs seedA2
+                      |>Tuple.mapFirst
+                          (Maybe.withDefault ("logicError", "logicError"))
+
+                    leftPattern =
+                      ( leftWord0 ++ " "
+                      ++word ++ " "
+                      ++rightWord0 ++ " "
+                      )
+
+                    rightPattern =
+                      ( leftWord1 ++ " "
+                      ++word ++ " "
+                      ++rightWord1 ++ " "
+                      )
+
+                    -- x = Debug.log "active"
+                    --     { sumLeft = String.length leftPattern
+                    --     , sumRight = String.length rightPattern
+                    --     }
 
                   in
-                    pattern
-                    |>String.dropLeft
-                        position
-                    |>String.uncons
-                    |>Maybe.withDefault (' ', "")
-                    |>Tuple.first
+                    ( { offset = leftLength - ( modBy parallax left ) + parallax
+                      , leftPattern = leftPattern
+                      , rightPattern = rightPattern
+                      , changeOver = left - leftLength
+                      }
+                    , seedA3
+                    )
+                    -- |>Debug.log ""
 
-                )
-            |>String.fromList
 
-        in
-          ( outputRow :: accumulator, seedB1 )
-      )
-      ( [], seed0 )
+            outputRow : String
+            outputRow =
+              -- Debug.todo "String.repeat \"2\" 10"
+              List.range 0 outputColumns
+              |>List.map
+                  (\columnNumber ->
+                    let
+                      pattern =
+                        -- if columnNumber == outputRowGenerator.changeOver
+                        -- then "###############"
+                        -- else
+                          if columnNumber < outputRowGenerator.changeOver
+                          then outputRowGenerator.rightPattern
+                          else outputRowGenerator.leftPattern
+                        -- |>Debug.log "pattern"
+
+                      position =
+                        columnNumber + outputRowGenerator.offset
+                        |>modBy parallax
+
+                    in
+                      pattern
+                      |>String.dropLeft
+                          position
+                      |>String.uncons
+                      |>Maybe.withDefault (' ', "")
+                      |>Tuple.first
+
+                  )
+              |>String.fromList
+
+          in
+            ( outputRow :: accumulator, seedB1 )
+        )
+        ( [], seed0 )
 
 -- MODEL
 
@@ -379,8 +382,8 @@ type Model =
   , ascii: List String
   , puzzle: Puzzle
   , randomSeed: Random.Seed
-  , leftPairs : List PairList
-  , rightPairs : List PairList
+  -- , leftPairs : List PairList
+  -- , rightPairs : List PairList
   }
 
 
@@ -415,15 +418,42 @@ initialPuzzle =
   , [ WordPlacement
       { word = "life", left = 63}
     ]
-  , []
-  , []
-  , []
-  , []
-  , []
-  , []
-  , []
-  , []
-  , []
+  , [ WordPlacement
+      { word = "life", left = 63}
+    ]
+  , [ WordPlacement
+      { word = "life", left = 63}
+    ]
+  , [ WordPlacement
+      { word = "life", left = 63}
+    ]
+  , [ WordPlacement
+      { word = "life", left = 63}
+    ]
+  , [ WordPlacement
+      { word = "life", left = 63}
+    ]
+  , [ WordPlacement
+      { word = "life", left = 63}
+    ]
+  , [ WordPlacement
+      { word = "life", left = 63}
+    ]
+  , [ WordPlacement
+      { word = "life", left = 63}
+    ]
+  , [ WordPlacement
+      { word = "life", left = 63}
+    ]
+  -- , []
+  -- , []
+  -- , []
+  -- , []
+  -- , []
+  -- , []
+  -- , []
+  -- , []
+  -- , []
   ]
 
 
@@ -577,23 +607,13 @@ init : Decode.Value -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url navKey =
   let
     -- x=Debug.log "init msg=" url
-    (leftPairs, rightPairs) =
-      -- Debug.log "leftAndRightPairs" 
-      leftAndRightPairs
-
-    -- x=Debug.log
-    --     "first fail leftPairs"
-    --     Dictionary.listFirstIndex
-    --       (\list -> (List.length list) < 1)
-    --       Dictionary.shortestWord
-    --       leftPairs
 
     seed0 =
       Random.initialSeed 0
 
     (ascii, seed1) =
       -- ( List.repeat outputRows (String.repeat outputColumns "2"), seed0 )
-      puzzleRender leftPairs rightPairs (initialPuzzle, seed0)
+      puzzleRender (initialPuzzle, seed0)
 
   in
     tabChange
@@ -601,11 +621,11 @@ init flags url navKey =
       { navKey = navKey
       , currentUrl = url
       , randomSeed = seed1
-      , tab = TabPlaintext
+      , tab = TabEdit
       , puzzle = initialPuzzle
       , ascii = ascii
-      , leftPairs = leftPairs
-      , rightPairs = rightPairs
+      -- , leftPairs = leftPairs
+      -- , rightPairs = rightPairs
       }
     ) url
 
@@ -617,19 +637,22 @@ init flags url navKey =
 type Msg
   = LinkClicked Browser.UrlRequest
   | UrlChanged Url.Url
+  | WordSet Int Int Int String
+  | Noop
 
 
 tabFragmentMap : Maybe String -> TabType
 tabFragmentMap fragment =
   case fragment of
-    Just "TabMarkdown" ->
-      TabMarkdown
-
     Just "TabImage" ->
       TabImage
 
-    _ -> -- including Nothing and Just TabPlaintext
-      TabPlaintext
+    Just "TabPlainText" ->
+      TabPlainText
+
+    -- Just "TabEdit" ->
+    _ ->  -- including Nothing and Just "TabEdit"
+      TabEdit
 
 
 tabChange : Model -> Url.Url -> ( Model, Cmd Msg )
@@ -669,6 +692,47 @@ update msg ((Model modelRecord) as model) =
       UrlChanged url ->
         tabChange model url
 
+      WordSet row colRank left word ->
+        let
+          wordPlacement =
+            WordPlacement { word = word, left = left }
+
+          puzzleOld =
+            case modelRecord.puzzle of
+              Puzzle puzzle ->
+                puzzle
+
+          rowOld =
+            Dictionary.listGetElement row puzzleOld
+            |>Maybe.withDefault []
+
+          rowNew =
+            Dictionary.listUpdateElement
+              colRank
+              wordPlacement
+              ( WordPlacement { word = "", left = 0 } )
+              rowOld
+
+          puzzleNew =
+            Puzzle ( Dictionary.listUpdateElement row rowNew [] puzzleOld )
+
+          (ascii, seed0) =
+            -- ( List.repeat outputRows (String.repeat outputColumns "2"), seed0 )
+            puzzleRender (puzzleNew, modelRecord.randomSeed)
+
+        in
+          ( Model
+            { modelRecord
+            | puzzle = puzzleNew
+            , ascii = ascii
+            , randomSeed = seed0
+            }
+          , Cmd.none
+          )
+      
+      Noop ->
+        ( model, Cmd.none )
+
 
 -- SUBSCRIPTIONS
 
@@ -680,6 +744,11 @@ subscriptions model =
 
 
 -- VIEW
+
+
+eachDirection : Int -> { top: Int, left: Int, bottom: Int, right: Int }
+eachDirection dist =
+  { top = dist, left = dist, bottom = dist, right = dist }
 
 
 tabColor : Element.Color
@@ -695,6 +764,49 @@ tabColorActive =
 tabBorderColor : Element.Color
 tabBorderColor =
   Element.rgb 0.95 0.85 0.75
+
+
+shadeColor : Element.Color
+shadeColor =
+  Element.rgba 0.2 0.2 0.2 0.5
+
+
+shadeSubstance : Element.Color
+shadeSubstance =
+  Element.rgba 0 0 0 0
+
+
+editBoxBorderColor : Element.Color
+editBoxBorderColor =
+  Element.rgb 0.5 0.5 0.5
+
+
+mainForegroundColor : Element.Color
+mainForegroundColor =
+  Element.rgb 0 0 0
+
+
+mainBackgroundColor : Element.Color
+mainBackgroundColor =
+  Element.rgb 1 1 1
+
+
+selectEnable : List ( Element.Attribute Msg)
+selectEnable =
+  [ Element.htmlAttribute <| Attr.style "-moz-user-select" "text"
+  , Element.htmlAttribute <| Attr.style "-webkit-user-select" "text"
+  , Element.htmlAttribute <| Attr.style "-ms-user-select" "text"
+  , Element.htmlAttribute <| Attr.style "user-select" "text"
+  ]
+
+
+selectDisable : List ( Element.Attribute Msg)
+selectDisable =
+  [ Element.htmlAttribute <| Attr.style "-moz-user-select" "none"
+  , Element.htmlAttribute <| Attr.style "-webkit-user-select" "none"
+  , Element.htmlAttribute <| Attr.style "-ms-user-select" "none"
+  , Element.htmlAttribute <| Attr.style "user-select" "none"
+  ]
 
 
 tabDivider : Element Msg
@@ -716,9 +828,11 @@ tab (Model model) tabTarget title link =
 
   in
     Element.link
-    [ Element.centerX
-    , Element.width Element.fill
-    ]
+    ( [ Element.centerX
+      , Element.width Element.fill
+      ]
+      ++selectDisable
+    )
     { url = link
     , label = Element.text title
     }
@@ -743,43 +857,158 @@ tab (Model model) tabTarget title link =
       , Font.center
       ]
 
+plainTextPane
+  : Model
+  ->Maybe ( List ( Element.Attribute Msg ) )
+  ->List ( Element Msg )
+plainTextPane ( ( Model modelRecord) as model) maybeInFront =
+  [ Element.column
+    ( [
+      ]
+    ++( case maybeInFront of
+          Nothing ->
+            []
+
+          Just inFront ->
+            inFront
+      
+      )
+    )
+    ( modelRecord.ascii
+      |>List.map
+        (\string -> Element.text <| "    " ++ string)
+    )
+  ]
+
+
+testExtract : Model -> String
+testExtract ( ( Model modelRecord) as model ) =
+  case modelRecord.puzzle of
+    Puzzle puzzle ->
+      case Dictionary.listGetElement 7 puzzle of
+        Nothing ->
+          ";P"
+
+        Just [] ->
+          ";P"
+
+        Just (WordPlacement wordPlacement :: _) ->
+          wordPlacement.word
+
+
+editPane : Model -> List ( Element Msg )
+editPane ( (Model modelRecord) as model ) =
+  plainTextPane
+    model
+    ( Just
+      ( [ Element.inFront
+          ( Element.el
+              ( [ Background.color shadeSubstance
+                , Element.width Element.fill
+                , Element.height Element.fill
+                , Element.inFront
+                  ( Element.el
+                      [ Background.color shadeSubstance
+                      , Element.width Element.fill
+                      , Element.height Element.fill
+                      ]
+                      ( Input.text
+                          selectEnable
+                          { onChange = WordSet 7 0 35
+                          , text = testExtract model
+                          , placeholder = Nothing
+                          , label = Input.labelLeft [ ] (Element.text "|||")
+                          }
+
+                      )
+                  )
+                ]
+                ++selectEnable
+              )
+              ( Element.text <| testExtract model )
+          )
+        ]
+        ++selectDisable
+      )
+    )
+
+  -- case modelRecord.puzzle of
+  --   Puzzle puzzle ->
+  --     puzzle 
+  --     |>List.map
+  --         (\wordPlacements ->
+  --             case wordPlacements of
+  --               [] ->
+  --                 Element.text "\n"
+
+  --               WordPlacement wordPlacement :: _ ->
+  --                 Element.el
+  --                   [ Border.color editBoxBorderColor
+  --                   , Border.width 2
+  --                   ]
+  --                   ( Element.text wordPlacement.word )
+
+  --         )
+
 body : Model -> List ( Html Msg )
 body ( (Model modelRecord) as model) =
   [ Element.layout
     [ Element.width Element.fill
     , Element.padding 10
+    , Background.color mainBackgroundColor
+    , Font.color mainForegroundColor
     -- , Element.explain Debug.todo
     ]
-    <|Element.column
+    <|Element.column -- Center Column Content
       [ Element.centerX
---      , Element.width
---        ( Element.fill
---          |> Element.maximum 600
---          |> Element.minimum 600
---        )
       ]
-      [ Element.row
-        [ Element.centerX
-        , Element.width Element.fill
-        ]
-        -- [ tab model TabPlaintext ("Plain Text" ++ (testDictionary 8)) "#TabPlaintext"
-        [ tab model TabPlaintext "Plain Text" "#TabPlaintext"
-        , tabDivider
-        , tab model TabMarkdown "Reddit Markdown" "#TabMarkdown"
-        , tabDivider
-        , tab model TabImage "Downloadable Image" "#TabImage"
-        ]
-      , Element.column
-        [ Border.width 2
-        , Border.color (Element.rgb 0 0 0)
-        , Background.color (Element.rgb 1 1 1)
-        , Font.family [ Font.typeface "Courier" ]
-        , Element.paddingXY 8 8
-        ]
-        ( modelRecord.ascii
-          |>List.map
-            (\string -> Element.text string)
-        )
+      [ Element.row -- Tabbed Navigation
+          [ Element.centerX
+          , Element.width Element.fill
+          ]
+          -- [ tab model TabPlainText ("Plain Text" ++ (testDictionary 8)) "#TabPlainText"
+          [ tab model TabEdit "Edit" "#TabEdit"
+          , tabDivider
+          , tab model TabPlainText "Plain Text" "#TabPlainText"
+          , tabDivider
+          , tab model TabImage "Downloadable Image" "#TabImage"
+          ]
+      , Element.column -- Primary content
+          ( [ Border.width 2
+            , Border.color mainForegroundColor
+            , Background.color
+              ( if modelRecord.tab == TabEdit
+                then shadeColor
+                else mainBackgroundColor
+              )
+            , Font.color mainForegroundColor
+            , Font.family [ Font.typeface "Courier" ]
+            -- , Element.spaceEvenly
+            , Element.width
+              ( Element.fill
+              |>Element.minimum 1028
+              |>Element.maximum 1028
+              )
+            , Element.height
+              ( Element.fill
+              |>Element.minimum 480
+              |>Element.maximum 480
+              )
+            , Element.paddingXY 8 8
+            ]
+          )
+          ( case modelRecord.tab of
+              TabEdit ->
+                editPane model
+              
+              TabPlainText ->
+                plainTextPane model Nothing
+              
+              TabImage ->
+                -- [ Element.image [] { src = "https://i.imgur.com/2a2cUTH.jpg", description = "h4wt13" } ]
+                [ Element.text "Canvas is hard D:"
+                ]
+          )
       ]
   ]
 
