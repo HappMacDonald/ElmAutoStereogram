@@ -3,13 +3,13 @@ module ElmAutoStereogram exposing (main)
 {-| Web app that creates text-based MagicEye Autostereograms.
 
 Bugs:
-* If a WordPlacement word gets too long .. I get an infinite loop. ;P
 
 Todo:
-* Have an initialPuzzle object to act as a hardcoded puzzle we'll begin working
-  with.
-* Trying to build out a puzzleRender function next to actually create an
-  autostereogram from said puzzle data.
+* FRESH ASSET: have correctly positioned test/singleton input + grabber
+** can input anything safely, puzzle re-renders perfectly behind input
+** position sets properly based on hardcoded "left" parameter
+
+* So I just need to make the grabby start grabbing. :D
 
 Here's my original design-doc:
 
@@ -54,8 +54,6 @@ import Debug
 import Random
 import Canvas
 import CanvasColor
-
-x = Debug.todo "Wait! Gotta run in Chrome, and fix the infinite loop problem. D:"
 
 
 -- PRIMARY DECLARATION
@@ -106,12 +104,54 @@ parallax =
   15
 
 
+fontSize : Int
+fontSize =
+  20
+
+
+charSizeToWidth : Float
+charSizeToWidth =
+  0.6
+
+
+tabFontSize : Int
+tabFontSize =
+  fontSize * 4 // 3 -- bump up roughly 133%
+
+
+contentWidth : Int
+contentWidth =
+  52 * fontSize -- arbitrarily tuned
+
+
+contentHeight : Int
+contentHeight =
+  24 * fontSize -- arbitrarily tuned
+
+
 {-| The width in glyphs of a space character.
 Yeah obviously this is "one", I just hate magic numbers. :P
 -}
 spaceWidth : Int
 spaceWidth =
   1
+
+
+markdownCodeIndent : Int
+markdownCodeIndent =
+  4
+
+
+editPaneRightOffset : Int
+editPaneRightOffset =
+  7
+
+
+editPaneDownOffset : Int
+editPaneDownOffset =
+  5
+
+
 
 {-| When using more than one word to fill a space, make sure that
 the second word gets to be at least this long because otherwise
@@ -264,9 +304,20 @@ puzzleRender (Puzzle puzzle, seed0) =
     |>List.foldr
         (\puzzleRow ( accumulator, seedA0 ) ->
           let
-            ( outputRowGenerator, seedB1 ) =
+            wordPresentMaybe : Maybe WordPlacement
+            wordPresentMaybe =
               case puzzleRow of
                 [] ->
+                  Nothing
+
+                ( WordPlacement {word} as wordPlacement ) :: _ ->
+                  if word==""
+                  then Nothing
+                  else Just wordPlacement
+
+            ( outputRowGenerator, seedB1 ) =
+              case wordPresentMaybe of
+                Nothing ->
                   let
                     (pattern, seedA1) =
                       parallaxFill ("", seedA0)
@@ -285,7 +336,7 @@ puzzleRender (Puzzle puzzle, seed0) =
                     , seedA2
                     )
 
-                ( WordPlacement {word, left} ) :: _ ->
+                Just ( WordPlacement {word, left} ) ->
                   let
                     wordLength =
                       String.length word
@@ -326,7 +377,11 @@ puzzleRender (Puzzle puzzle, seed0) =
                     --     }
 
                   in
-                    ( { offset = leftLength - ( modBy parallax left ) + parallax
+                    ( { offset =
+                          leftLength
+                          - ( modBy parallax left )
+                          + parallax
+                          + spaceWidth
                       , leftPattern = leftPattern
                       , rightPattern = rightPattern
                       , changeOver = left - leftLength
@@ -338,18 +393,14 @@ puzzleRender (Puzzle puzzle, seed0) =
 
             outputRow : String
             outputRow =
-              -- Debug.todo "String.repeat \"2\" 10"
               List.range 0 outputColumns
               |>List.map
                   (\columnNumber ->
                     let
                       pattern =
-                        -- if columnNumber == outputRowGenerator.changeOver
-                        -- then "###############"
-                        -- else
-                          if columnNumber < outputRowGenerator.changeOver
-                          then outputRowGenerator.rightPattern
-                          else outputRowGenerator.leftPattern
+                        if columnNumber < outputRowGenerator.changeOver
+                        then outputRowGenerator.rightPattern
+                        else outputRowGenerator.leftPattern
                         -- |>Debug.log "pattern"
 
                       position =
@@ -472,6 +523,11 @@ type alias LeftAndRightPairs =
 emptyPairOfPairList : LeftAndRightPairs
 emptyPairOfPairList =
   ([],[])
+
+
+emptyWordPlacement : WordPlacement
+emptyWordPlacement =
+  WordPlacement { word = "", left = 0 }
 
 
 pairOfListConcat : (List a, List a) -> (List a, List a) -> (List a, List a)
@@ -694,9 +750,6 @@ update msg ((Model modelRecord) as model) =
 
       WordSet row colRank left word ->
         let
-          wordPlacement =
-            WordPlacement { word = word, left = left }
-
           puzzleOld =
             case modelRecord.puzzle of
               Puzzle puzzle ->
@@ -706,11 +759,25 @@ update msg ((Model modelRecord) as model) =
             Dictionary.listGetElement row puzzleOld
             |>Maybe.withDefault []
 
+          wordPlacementOld =
+            Dictionary.listGetElement colRank rowOld
+            |>Maybe.withDefault emptyWordPlacement
+
+          wordOld =
+            case wordPlacementOld of
+              WordPlacement wordPlacementOldRecord ->
+                wordPlacementOldRecord.word
+
+          wordPlacementNew =
+            if String.length word <= maxMessageLength
+            then WordPlacement { word = word, left = left }
+            else WordPlacement { word = wordOld, left = left }
+
           rowNew =
             Dictionary.listUpdateElement
               colRank
-              wordPlacement
-              ( WordPlacement { word = "", left = 0 } )
+              wordPlacementNew
+              emptyWordPlacement
               rowOld
 
           puzzleNew =
@@ -749,6 +816,11 @@ subscriptions model =
 eachDirection : Int -> { top: Int, left: Int, bottom: Int, right: Int }
 eachDirection dist =
   { top = dist, left = dist, bottom = dist, right = dist }
+
+
+eachDirection0 : { top: Int, left: Int, bottom: Int, right: Int }
+eachDirection0 =
+  eachDirection 0
 
 
 tabColor : Element.Color
@@ -812,7 +884,7 @@ selectDisable =
 tabDivider : Element Msg
 tabDivider =
   Element.el
-  [ Element.width ( Element.fill |> Element.maximum 5 )
+  [ Element.width <| Element.maximum 5 Element.fill
   ]
   ( Element.text "" )
 
@@ -830,6 +902,7 @@ tab (Model model) tabTarget title link =
     Element.link
     ( [ Element.centerX
       , Element.width Element.fill
+      , Font.size tabFontSize
       ]
       ++selectDisable
     )
@@ -863,7 +936,7 @@ plainTextPane
   ->List ( Element Msg )
 plainTextPane ( ( Model modelRecord) as model) maybeInFront =
   [ Element.column
-    ( [
+    ( [ Element.paddingXY 8 8
       ]
     ++( case maybeInFront of
           Nothing ->
@@ -876,61 +949,94 @@ plainTextPane ( ( Model modelRecord) as model) maybeInFront =
     )
     ( modelRecord.ascii
       |>List.map
-        (\string -> Element.text <| "    " ++ string)
+        (\string ->
+          Element.text
+          <| ( String.repeat markdownCodeIndent " " )
+          ++ string
+        )
     )
   ]
 
 
-testExtract : Model -> String
-testExtract ( ( Model modelRecord) as model ) =
-  case modelRecord.puzzle of
-    Puzzle puzzle ->
-      case Dictionary.listGetElement 7 puzzle of
-        Nothing ->
-          ";P"
-
-        Just [] ->
-          ";P"
-
-        Just (WordPlacement wordPlacement :: _) ->
-          wordPlacement.word
+gripperElement : Element Msg
+gripperElement =
+  Element.el
+    [ Element.width Element.fill
+    , Element.height Element.fill
+    , Background.color editBoxBorderColor
+    -- , Element.explain Debug.todo
+    ]
+    <|Element.el
+        [ Font.center
+        , Element.centerX
+        , Element.centerY
+        -- , Element.explain Debug.todo
+        ]
+        <|Element.text "|||"
 
 
 editPane : Model -> List ( Element Msg )
 editPane ( (Model modelRecord) as model ) =
-  plainTextPane
-    model
-    ( Just
-      ( [ Element.inFront
-          ( Element.el
-              ( [ Background.color shadeSubstance
-                , Element.width Element.fill
-                , Element.height Element.fill
-                , Element.inFront
-                  ( Element.el
-                      [ Background.color shadeSubstance
-                      , Element.width Element.fill
-                      , Element.height Element.fill
-                      ]
-                      ( Input.text
-                          selectEnable
-                          { onChange = WordSet 7 0 35
-                          , text = testExtract model
-                          , placeholder = Nothing
-                          , label = Input.labelLeft [ ] (Element.text "|||")
-                          }
+  let
+    colRank =
+      testExtractColRank model
 
-                      )
-                  )
-                ]
-                ++selectEnable
-              )
-              ( Element.text <| testExtract model )
-          )
-        ]
-        ++selectDisable
-      )
-    )
+    rowIndex = 7
+
+    offset =
+      [ ( toFloat editPaneRightOffset )
+        + (toFloat (colRank * fontSize))
+        * charSizeToWidth
+        |>Debug.log "moveRight"
+        |>Element.moveRight 
+      , editPaneDownOffset + ( rowIndex * fontSize )
+        |>toFloat
+        |>Element.moveDown
+      ]
+
+    input =
+      Input.text
+        ( [ Element.spacing 0
+          , Element.height
+            <|Element.maximum 10 Element.fill
+          , Element.alpha 0.3
+          ]
+        ++selectEnable
+        ++offset
+        )
+        { onChange = WordSet 7 0 35
+        , text = testExtractWord model
+        , placeholder = Nothing
+        , label =
+            Input.labelLeft
+            ( [ Element.pointer ]
+            ++selectDisable
+            ++offset
+            )
+            gripperElement
+        }
+
+    shade =
+      [ Element.inFront
+        ( Element.el
+            [ Background.color shadeSubstance
+            , Element.width Element.fill
+            , Element.height Element.fill
+            -- , Element.paddingEach
+            --   { eachDirection0
+            --   | top = 5
+            --   , left = 7
+            --   }
+            ]
+            input
+        )
+      ]
+      ++selectDisable
+
+  in
+    plainTextPane
+      model
+      ( Just shade )
 
   -- case modelRecord.puzzle of
   --   Puzzle puzzle ->
@@ -983,18 +1089,18 @@ body ( (Model modelRecord) as model) =
               )
             , Font.color mainForegroundColor
             , Font.family [ Font.typeface "Courier" ]
+            , Font.size fontSize
             -- , Element.spaceEvenly
             , Element.width
               ( Element.fill
-              |>Element.minimum 1028
-              |>Element.maximum 1028
+              |>Element.minimum contentWidth
+              |>Element.maximum contentWidth
               )
             , Element.height
               ( Element.fill
-              |>Element.minimum 480
-              |>Element.maximum 480
+              |>Element.minimum contentHeight
+              |>Element.maximum contentHeight
               )
-            , Element.paddingXY 8 8
             ]
           )
           ( case modelRecord.tab of
@@ -1017,18 +1123,46 @@ view : Model -> Browser.Document Msg
 view model =
   { title = "Title"
   , body = body model
+  -- , body =
+  --   [ Element.layout
+  --       [ Element.width Element.fill
+  --       , Element.height Element.fill
+  --       ]
+  --       gripperElement
+  --   ]
   }
 
 
 -- test/temporary scaffoldings
 
 
-testDictionary : Int -> String
-testDictionary q =
-  let
-    seed = Random.initialSeed q
-  in
-    Dictionary.getOne seed
-    |>Tuple.first 
+testExtractWord : Model -> String
+testExtractWord ( ( Model modelRecord) as model ) =
+  case modelRecord.puzzle of
+    Puzzle puzzle ->
+      case Dictionary.listGetElement 7 puzzle of
+        Nothing ->
+          ";P"
+
+        Just [] ->
+          ";P"
+
+        Just (WordPlacement wordPlacement :: _) ->
+          wordPlacement.word
+
+
+testExtractColRank : Model -> Int
+testExtractColRank ( ( Model modelRecord) as model ) =
+  case modelRecord.puzzle of
+    Puzzle puzzle ->
+      case Dictionary.listGetElement 7 puzzle of
+        Nothing ->
+          -10
+
+        Just [] ->
+          -10
+
+        Just (WordPlacement wordPlacement :: _) ->
+          wordPlacement.left
 
 
