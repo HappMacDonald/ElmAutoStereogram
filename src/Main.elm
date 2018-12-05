@@ -3,11 +3,17 @@ module ElmAutoStereogram exposing (main)
 {-| Web app that creates text-based MagicEye Autostereograms.
 
 Bugs:
+* I can't get grabber to work. Left message in slack: https://elmlang.slack.com/archives/C4F9NBLR1/p1543733850023000
+** There appear to be several options I ought to explore:
+** norpan/elm-html5-drag-drop
+** ir4y/elm-dnd
+** I hope Ellie's package search isn't still busted tho. ;P
 
-Todo:
+More Todo:
 * FRESH ASSET: have correctly positioned test/singleton input + grabber
 ** can input anything safely, puzzle re-renders perfectly behind input
 ** position sets properly based on hardcoded "left" parameter
+** YAYX0RZKJS!!1 Canvas now works 100%, bitches! :D
 
 * So I just need to make the grabby start grabbing. :D
 
@@ -104,14 +110,35 @@ parallax =
   15
 
 
+{-|canvasOverSample forces Canvas image to render that many times larger
+than the logical pixels in the parent object. This is a lazy way to deal with
+monitors that have "logical" pixels bigger than their physical pixels, that
+would otherwise cause all canvas contents to get icky and blurry and smudged.
+-}
+
+canvasOverSample : Float
+canvasOverSample =
+  10
+
+
+contentMargin : Int
+contentMargin =
+  8
+
+
 fontSize : Int
 fontSize =
   20
 
 
-charSizeToWidth : Float
-charSizeToWidth =
-  0.6
+fontWidth : Float
+fontWidth =
+  0.6 * (toFloat fontSize)
+
+
+inputHeight : Int
+inputHeight =
+  fontSize // 2
 
 
 tabFontSize : Int
@@ -693,7 +720,8 @@ init flags url navKey =
 type Msg
   = LinkClicked Browser.UrlRequest
   | UrlChanged Url.Url
-  | WordSet Int Int Int String
+  | WordSet Int Int String -- row, colRank, word
+  | LeftSet Int Int Int -- row, colRank, left
   | Noop
 
 
@@ -733,6 +761,59 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg ((Model modelRecord) as model) =
   let
     x=Debug.log "update msg=" msg
+
+    replaceWordPlacement : Int -> Int -> Maybe Int -> Maybe String -> Puzzle
+    replaceWordPlacement row colRank leftMaybe wordMaybe =
+      let
+        puzzleOld =
+          case modelRecord.puzzle of
+            Puzzle puzzle ->
+              puzzle
+
+        rowOld =
+          Dictionary.listGetElement row puzzleOld
+          |>Maybe.withDefault []
+
+        wordPlacementOld =
+          Dictionary.listGetElement colRank rowOld
+          |>Maybe.withDefault emptyWordPlacement
+
+        (wordOld, leftOld) =
+          case wordPlacementOld of
+            WordPlacement wordPlacementOldRecord ->
+              ( wordPlacementOldRecord.word
+              , wordPlacementOldRecord.left
+              )
+
+        wordNew =
+          case wordMaybe of
+            Nothing ->
+              wordOld
+
+            Just word ->
+              if String.length word <= maxMessageLength then word else wordOld
+
+        leftNew =
+          case leftMaybe of
+            Nothing ->
+              leftOld
+
+            Just left ->
+              Dictionary.intClampMinMax 0 outputColumns left
+
+        wordPlacementNew =
+          WordPlacement { word = wordNew, left = leftNew }
+
+        rowNew =
+          Dictionary.listUpdateElement
+            colRank
+            wordPlacementNew
+            emptyWordPlacement
+            rowOld
+
+      in
+        Puzzle ( Dictionary.listUpdateElement row rowNew [] puzzleOld )
+
   in
     case msg of
       LinkClicked urlRequest ->
@@ -748,40 +829,10 @@ update msg ((Model modelRecord) as model) =
       UrlChanged url ->
         tabChange model url
 
-      WordSet row colRank left word ->
+      WordSet row colRank word ->
         let
-          puzzleOld =
-            case modelRecord.puzzle of
-              Puzzle puzzle ->
-                puzzle
-
-          rowOld =
-            Dictionary.listGetElement row puzzleOld
-            |>Maybe.withDefault []
-
-          wordPlacementOld =
-            Dictionary.listGetElement colRank rowOld
-            |>Maybe.withDefault emptyWordPlacement
-
-          wordOld =
-            case wordPlacementOld of
-              WordPlacement wordPlacementOldRecord ->
-                wordPlacementOldRecord.word
-
-          wordPlacementNew =
-            if String.length word <= maxMessageLength
-            then WordPlacement { word = word, left = left }
-            else WordPlacement { word = wordOld, left = left }
-
-          rowNew =
-            Dictionary.listUpdateElement
-              colRank
-              wordPlacementNew
-              emptyWordPlacement
-              rowOld
-
           puzzleNew =
-            Puzzle ( Dictionary.listUpdateElement row rowNew [] puzzleOld )
+            replaceWordPlacement row colRank Nothing (Just word)
 
           (ascii, seed0) =
             -- ( List.repeat outputRows (String.repeat outputColumns "2"), seed0 )
@@ -797,6 +848,25 @@ update msg ((Model modelRecord) as model) =
           , Cmd.none
           )
       
+      LeftSet row colRank left ->
+        let
+          puzzleNew =
+            replaceWordPlacement row colRank (Just left) Nothing
+
+          (ascii, seed0) =
+            -- ( List.repeat outputRows (String.repeat outputColumns "2"), seed0 )
+            puzzleRender (puzzleNew, modelRecord.randomSeed)
+
+        in
+          ( Model
+            { modelRecord
+            | puzzle = puzzleNew
+            , ascii = ascii
+            , randomSeed = seed0
+            }
+          , Cmd.none
+          )        
+
       Noop ->
         ( model, Cmd.none )
 
@@ -823,44 +893,74 @@ eachDirection0 =
   eachDirection 0
 
 
-tabColor : Element.Color
+type alias RGB = { red:Float, green:Float, blue:Float }
+type alias RGBA = { red:Float, green:Float, blue:Float, opacity:Float }
+
+canvasRGB : RGB -> CanvasColor.Color
+canvasRGB rgb =
+  CanvasColor.rgb
+    ( round (rgb.red * 255) )
+    ( round (rgb.green * 255) )
+    ( round (rgb.blue * 255) )
+
+
+canvasRGBA : RGBA -> CanvasColor.Color
+canvasRGBA rgba =
+  CanvasColor.rgba
+    ( round (rgba.red * 255) )
+    ( round (rgba.green * 255) )
+    ( round (rgba.blue * 255) )
+    rgba.opacity
+
+
+uiRGB : RGB -> Element.Color
+uiRGB rgb =
+  Element.rgb rgb.red rgb.green rgb.blue
+
+
+uiRGBA : RGBA -> Element.Color
+uiRGBA rgba =
+  Element.rgba rgba.red rgba.green rgba.blue rgba.opacity
+
+
+tabColor: RGB
 tabColor =
-  Element.rgb 0.9 0.8 0.7
+  RGB 0.9 0.8 0.7
 
 
-tabColorActive : Element.Color
+tabColorActive: RGB
 tabColorActive =
-  Element.rgb 0.8 0.7 0.6
+  RGB 0.8 0.7 0.6
 
 
-tabBorderColor : Element.Color
+tabBorderColor: RGB
 tabBorderColor =
-  Element.rgb 0.95 0.85 0.75
+  RGB 0.95 0.85 0.75
 
 
-shadeColor : Element.Color
+shadeColor: RGBA
 shadeColor =
-  Element.rgba 0.2 0.2 0.2 0.5
+  RGBA 0.2 0.2 0.2 0.5
 
 
-shadeSubstance : Element.Color
+shadeSubstance: RGBA
 shadeSubstance =
-  Element.rgba 0 0 0 0
+  RGBA 0 0 0 0
 
 
-editBoxBorderColor : Element.Color
+editBoxBorderColor: RGB
 editBoxBorderColor =
-  Element.rgb 0.5 0.5 0.5
+  RGB 0.5 0.5 0.5
 
 
-mainForegroundColor : Element.Color
+mainForegroundColor: RGB
 mainForegroundColor =
-  Element.rgb 0 0 0
+  RGB 0 0 0
 
 
-mainBackgroundColor : Element.Color
+mainBackgroundColor: RGB
 mainBackgroundColor =
-  Element.rgb 1 1 1
+  RGB 1 1 1
 
 
 selectEnable : List ( Element.Attribute Msg)
@@ -922,8 +1022,8 @@ tab (Model model) tabTarget title link =
         , right = 2
         , top = 2
         }
-      , Border.color tabBorderColor
-      , Background.color backgroundColor
+      , Border.color ( uiRGB tabBorderColor )
+      , Background.color ( uiRGB backgroundColor )
       , Element.fillPortion 1
         |>Element.width
       , Element.padding 5
@@ -936,7 +1036,7 @@ plainTextPane
   ->List ( Element Msg )
 plainTextPane ( ( Model modelRecord) as model) maybeInFront =
   [ Element.column
-    ( [ Element.paddingXY 8 8
+    ( [ Element.paddingXY contentMargin contentMargin
       ]
     ++( case maybeInFront of
           Nothing ->
@@ -958,68 +1058,175 @@ plainTextPane ( ( Model modelRecord) as model) maybeInFront =
   ]
 
 
-gripperElement : Element Msg
-gripperElement =
-  Element.el
-    [ Element.width Element.fill
-    , Element.height Element.fill
-    , Background.color editBoxBorderColor
-    -- , Element.explain Debug.todo
-    ]
-    <|Element.el
-        [ Font.center
-        , Element.centerX
-        , Element.centerY
-        -- , Element.explain Debug.todo
+imagePane : Model -> List ( Element Msg )
+imagePane ( (Model modelRecord) as model ) =
+  let
+    leftMargin =
+      4 * fontWidth
+
+    canvasWidth =
+      ( ( toFloat contentWidth )
+      - leftMargin
+      -- * canvasOverSample
+      - ( toFloat contentMargin )
+      - 3.8
+      )
+      |>round
+      
+    canvasHeight =
+      ( toFloat contentHeight )
+      -- * canvasOverSample
+      - 5
+      |>round
+
+    rowpx : Int -> Float
+    rowpx row =
+      ( toFloat ( fontSize * ( row ) ) )
+      + ( 5.1 )
+
+    renderRows : List String -> Int -> Canvas.Commands -> Canvas.Commands
+    renderRows asciiList index cmds =
+      case asciiList of
+        [] ->
+          cmds
+
+        head :: remainingList ->
+          cmds
+          |>Canvas.fillText
+              head
+              ( 7.9 )
+              ( rowpx index )
+              Nothing
+          |>renderRows remainingList ( index + 1 )
+
+  in
+    [ Element.el
+        [ Element.paddingEach
+          { eachDirection0
+          | left = round leftMargin
+          , top = 1
+          }
         ]
-        <|Element.text "|||"
+        ( Canvas.element
+            canvasWidth
+            canvasHeight
+            [ ]
+            ( Canvas.empty
+              -- |>Canvas.scale (1/canvasOverSample) (1/canvasOverSample)
+              |>Canvas.fillStyle ( canvasRGB mainBackgroundColor )
+              |>Canvas.fillRect
+                  0
+                  0
+                  ( toFloat canvasWidth )
+                  ( toFloat canvasHeight )
+              |>Canvas.fillStyle ( canvasRGB mainForegroundColor )
+              |>Canvas.font ( (String.fromInt fontSize) ++ "px Courier" )
+              |>Canvas.textBaseline Canvas.Top
+              |>Canvas.save
+              |>renderRows modelRecord.ascii 0
+              -- |>Canvas.fillText "Hello world" 0 ( rowpx  0 ) Nothing
+              |>Canvas.restore
+
+            )
+          |>Element.html
+        )
+    ]
 
 
 editPane : Model -> List ( Element Msg )
 editPane ( (Model modelRecord) as model ) =
   let
-    colRank =
-      testExtractColRank model
+    left =
+      testExtractLeft model
 
     rowIndex = 7
 
-    offset =
-      [ ( toFloat editPaneRightOffset )
-        + (toFloat (colRank * fontSize))
-        * charSizeToWidth
-        |>Debug.log "moveRight"
-        |>Element.moveRight 
-      , editPaneDownOffset + ( rowIndex * fontSize )
-        |>toFloat
-        |>Element.moveDown
-      ]
+    offsetX =
+      ( toFloat editPaneRightOffset )
+      + (toFloat left)
+      * fontWidth
+      -- |>Debug.log "moveRight"
+      |>Element.moveRight 
+      
+    offsetY =
+      editPaneDownOffset + ( rowIndex * fontSize )
+      |>toFloat
+      |>Element.moveDown
 
+
+    gripperElement : Element Msg
+    gripperElement =
+      Element.el
+        [ Element.width Element.fill
+        , Element.height Element.fill
+        , Background.color ( uiRGB editBoxBorderColor )
+        ]
+        <|Element.el
+            [ Font.center
+            , Element.centerX
+            , Element.centerY
+            ]
+            <|Element.text "|||"
+
+    input : Element Msg
     input =
       Input.text
         ( [ Element.spacing 0
           , Element.height
-            <|Element.maximum 10 Element.fill
+            <|Element.maximum inputHeight Element.fill
+          , Element.width
+            <|Element.maximum
+              ( ( toFloat ( 2 + maxMessageLength ) )
+                * fontWidth
+                |>round
+              )
+              Element.fill
           , Element.alpha 0.3
+          , offsetX
+          , offsetY
           ]
         ++selectEnable
-        ++offset
         )
-        { onChange = WordSet 7 0 35
+        { onChange = WordSet 7 0
         , text = testExtractWord model
         , placeholder = Nothing
-        , label =
-            Input.labelLeft
-            ( [ Element.pointer ]
-            ++selectDisable
-            ++offset
-            )
-            gripperElement
+        , label = Input.labelAbove [] (Element.none)
         }
 
+    slider : Element Msg
+    slider =
+      Input.slider
+        ( [ Element.height (Element.px fontSize)
+          , Element.inFront input
+          , offsetY
+          , Element.behindContent
+            ( Element.el
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                , Background.color <| Element.rgb 1 1 1
+                ]
+                Element.none
+            )
+          ]
+          ++ selectEnable
+        )
+        { onChange = round >> (LeftSet 7 0)
+        , label = Input.labelAbove [] (Element.none)
+        , min = 0
+        , max = toFloat outputColumns
+        , step = Just 1
+        , value = testExtractLeft model |> toFloat
+        , thumb = Input.defaultThumb
+        -- , thumb = Input.thumb
+        --   [ Element.behindContent input
+        --   ]
+        }
+
+    shade : List ( Element.Attribute Msg )
     shade =
       [ Element.inFront
         ( Element.el
-            [ Background.color shadeSubstance
+            [ Background.color ( uiRGBA shadeSubstance )
             , Element.width Element.fill
             , Element.height Element.fill
             -- , Element.paddingEach
@@ -1028,7 +1235,7 @@ editPane ( (Model modelRecord) as model ) =
             --   , left = 7
             --   }
             ]
-            input
+            slider
         )
       ]
       ++selectDisable
@@ -1049,20 +1256,21 @@ editPane ( (Model modelRecord) as model ) =
 
   --               WordPlacement wordPlacement :: _ ->
   --                 Element.el
-  --                   [ Border.color editBoxBorderColor
+  --                   [ Border.color ( uiRGB editBoxBorderColor )
   --                   , Border.width 2
   --                   ]
   --                   ( Element.text wordPlacement.word )
 
   --         )
 
+
 body : Model -> List ( Html Msg )
 body ( (Model modelRecord) as model) =
   [ Element.layout
     [ Element.width Element.fill
     , Element.padding 10
-    , Background.color mainBackgroundColor
-    , Font.color mainForegroundColor
+    , Background.color ( uiRGB mainBackgroundColor )
+    , Font.color ( uiRGB mainForegroundColor )
     -- , Element.explain Debug.todo
     ]
     <|Element.column -- Center Column Content
@@ -1081,13 +1289,13 @@ body ( (Model modelRecord) as model) =
           ]
       , Element.column -- Primary content
           ( [ Border.width 2
-            , Border.color mainForegroundColor
+            , Border.color ( uiRGB mainForegroundColor )
             , Background.color
               ( if modelRecord.tab == TabEdit
-                then shadeColor
-                else mainBackgroundColor
+                then uiRGBA shadeColor 
+                else uiRGB mainBackgroundColor
               )
-            , Font.color mainForegroundColor
+            , Font.color ( uiRGB mainForegroundColor )
             , Font.family [ Font.typeface "Courier" ]
             , Font.size fontSize
             -- , Element.spaceEvenly
@@ -1111,9 +1319,10 @@ body ( (Model modelRecord) as model) =
                 plainTextPane model Nothing
               
               TabImage ->
+                imagePane model
                 -- [ Element.image [] { src = "https://i.imgur.com/2a2cUTH.jpg", description = "h4wt13" } ]
-                [ Element.text "Canvas is hard D:"
-                ]
+                -- [ Element.text "Canvas is hard D:"
+                -- ]
           )
       ]
   ]
@@ -1121,15 +1330,8 @@ body ( (Model modelRecord) as model) =
 
 view : Model -> Browser.Document Msg
 view model =
-  { title = "Title"
+  { title = "Elm Ascii Autostereogram Creator"
   , body = body model
-  -- , body =
-  --   [ Element.layout
-  --       [ Element.width Element.fill
-  --       , Element.height Element.fill
-  --       ]
-  --       gripperElement
-  --   ]
   }
 
 
@@ -1151,8 +1353,8 @@ testExtractWord ( ( Model modelRecord) as model ) =
           wordPlacement.word
 
 
-testExtractColRank : Model -> Int
-testExtractColRank ( ( Model modelRecord) as model ) =
+testExtractLeft : Model -> Int
+testExtractLeft ( ( Model modelRecord) as model ) =
   case modelRecord.puzzle of
     Puzzle puzzle ->
       case Dictionary.listGetElement 7 puzzle of

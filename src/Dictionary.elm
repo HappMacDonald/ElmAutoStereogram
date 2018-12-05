@@ -15,6 +15,8 @@ module Dictionary exposing
   , listUpdateElement
   , listGetElement
   , listGetOne
+  , intBetweenInclusive
+  , intClampMinMax
   )
 import Array exposing (Array)
 import Maybe exposing (Maybe)
@@ -22,6 +24,26 @@ import Random
 
 
 -- Arbitrary helper functions
+
+{-|Tests whether or not an Integer lies between a start and an end point.
+-}
+
+intBetweenInclusive : Int -> Int -> Int -> Bool
+intBetweenInclusive start end number =
+  number >= start && number <= end
+
+
+{-|
+-}
+
+intClampMinMax : Int -> Int -> Int -> Int
+intClampMinMax start end number =
+  if number<start
+  then start
+  else
+    if number>end
+    then end
+    else number
 
 {-| Feed in a list and a random seed, get a Maybe element from that list
 such that "Nothing" ought to only be possible if you've fed in an empty list.

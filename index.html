@@ -1,0 +1,20 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>ElmAutoStereogram</title>
+</head>
+
+<body>
+<div id="ElmAsciiAutostereogram"></div>
+<script src='elm-canvas.js'></script>
+<script src='ElmAsciiAutostereogram.js'></script>
+<script>
+var app = Elm.ElmAutoStereogram.init({ node: document.getElementById("ElmAsciiAutostereogram") });
+if (document.getElementById("ElmAsciiAutostereogram"))
+{
+  document.getElementById("ElmAsciiAutostereogram").innerText = 'This is a headless program, meaning there is nothing to show here.\n\nI started the program anyway though, and you can access it as `app` in the developer console.';
+}
+</script>
+</body>
+</html>
