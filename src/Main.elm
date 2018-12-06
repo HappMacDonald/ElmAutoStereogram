@@ -3,19 +3,11 @@ module ElmAutoStereogram exposing (main)
 {-| Web app that creates text-based MagicEye Autostereograms.
 
 Bugs:
-* I can't get grabber to work. Left message in slack: https://elmlang.slack.com/archives/C4F9NBLR1/p1543733850023000
-** There appear to be several options I ought to explore:
-** norpan/elm-html5-drag-drop
-** ir4y/elm-dnd
-** I hope Ellie's package search isn't still busted tho. ;P
+* OK, grabber is working 99% well
+** Main problem just now is it "flashes" to the left margin
+** Presumably because spurious zero X values are getting calculated
+** I should probably try elm-live debug mode to catch that, hmm..
 
-More Todo:
-* FRESH ASSET: have correctly positioned test/singleton input + grabber
-** can input anything safely, puzzle re-renders perfectly behind input
-** position sets properly based on hardcoded "left" parameter
-** YAYX0RZKJS!!1 Canvas now works 100%, bitches! :D
-
-* So I just need to make the grabby start grabbing. :D
 
 Here's my original design-doc:
 
@@ -60,6 +52,7 @@ import Debug
 import Random
 import Canvas
 import CanvasColor
+import Html5.DragDrop
 
 
 -- PRIMARY DECLARATION
@@ -460,6 +453,7 @@ type Model =
   , ascii: List String
   , puzzle: Puzzle
   , randomSeed: Random.Seed
+  , dragDropHandle: Html5.DragDrop.Model DragId DropId
   -- , leftPairs : List PairList
   -- , rightPairs : List PairList
   }
@@ -707,8 +701,7 @@ init flags url navKey =
       , tab = TabEdit
       , puzzle = initialPuzzle
       , ascii = ascii
-      -- , leftPairs = leftPairs
-      -- , rightPairs = rightPairs
+      , dragDropHandle = Html5.DragDrop.init
       }
     ) url
 
@@ -716,12 +709,20 @@ init flags url navKey =
 
 -- UPDATE
 
+type alias DragId =
+  Int
+
+
+type alias DropId =
+  Int
+
 
 type Msg
   = LinkClicked Browser.UrlRequest
   | UrlChanged Url.Url
   | WordSet Int Int String -- row, colRank, word
   | LeftSet Int Int Int -- row, colRank, left
+  | DragDropMsg (Html5.DragDrop.Msg DragId DropId)
   | Noop
 
 
@@ -760,7 +761,7 @@ tabChange ((Model modelRecord) as model) url =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg ((Model modelRecord) as model) =
   let
-    x=Debug.log "update msg=" msg
+    -- x=Debug.log "update msg=" msg
 
     replaceWordPlacement : Int -> Int -> Maybe Int -> Maybe String -> Puzzle
     replaceWordPlacement row colRank leftMaybe wordMaybe =
@@ -866,6 +867,58 @@ update msg ((Model modelRecord) as model) =
             }
           , Cmd.none
           )        
+
+      DragDropMsg dragDropMsg ->
+        let
+          ( dragDropHandle, resultMaybe1 ) =
+            Html5.DragDrop.update dragDropMsg modelRecord.dragDropHandle
+            -- |>Debug.log "dragdrop"
+
+          positionMaybe =
+            case resultMaybe1 of
+              Just (_, _, position) ->
+                Just position
+
+              _ ->
+                Html5.DragDrop.getDroppablePosition dragDropHandle
+                |>Debug.log "["
+
+          leftOld =
+            testExtractLeft model
+
+          leftNew =
+            case positionMaybe of
+              Nothing ->
+                leftOld
+              
+              Just position ->
+                round
+                  ( ( toFloat position.x ) / fontWidth - 4 )
+                |>Dictionary.intClampMinMax 0 79
+
+          x =
+            if leftNew<1
+            then Debug.log "zero?" "]"--(dragDropHandle, resultMaybe1)
+            else ""--(dragDropHandle, resultMaybe1)
+
+          puzzleNew =
+            replaceWordPlacement testRow testColRank (Just leftNew) Nothing
+
+          (ascii, seed0) =
+            -- ( List.repeat outputRows (String.repeat outputColumns "2"), seed0 )
+            puzzleRender (puzzleNew, modelRecord.randomSeed)
+
+        in
+          ( Model
+            { modelRecord
+            | dragDropHandle = dragDropHandle
+            , puzzle = puzzleNew
+            , ascii = ascii
+            , randomSeed = seed0
+            }
+          , Cmd.none
+          )
+
 
       Noop ->
         ( model, Cmd.none )
@@ -1139,7 +1192,8 @@ editPane ( (Model modelRecord) as model ) =
     left =
       testExtractLeft model
 
-    rowIndex = 7
+    rowIndex = 
+      testRow
 
     offsetX =
       ( toFloat editPaneRightOffset )
@@ -1157,10 +1211,17 @@ editPane ( (Model modelRecord) as model ) =
     gripperElement : Element Msg
     gripperElement =
       Element.el
-        [ Element.width Element.fill
-        , Element.height Element.fill
-        , Background.color ( uiRGB editBoxBorderColor )
-        ]
+        ( [ Element.width Element.fill
+          , Element.height Element.fill
+          , Background.color ( uiRGB editBoxBorderColor )
+          , offsetX
+          , offsetY
+          ]
+        ++( List.map
+            Element.htmlAttribute
+            <|Html5.DragDrop.draggable DragDropMsg 1
+          )
+        )
         <|Element.el
             [ Font.center
             , Element.centerX
@@ -1181,51 +1242,23 @@ editPane ( (Model modelRecord) as model ) =
                 |>round
               )
               Element.fill
-          , Element.alpha 0.3
+          , Element.alpha 0.7
           , offsetX
           , offsetY
           ]
         ++selectEnable
         )
-        { onChange = WordSet 7 0
+        { onChange = WordSet testRow testColRank
         , text = testExtractWord model
         , placeholder = Nothing
-        , label = Input.labelAbove [] (Element.none)
-        }
-
-    slider : Element Msg
-    slider =
-      Input.slider
-        ( [ Element.height (Element.px fontSize)
-          , Element.inFront input
-          , offsetY
-          , Element.behindContent
-            ( Element.el
-                [ Element.width Element.fill
-                , Element.height Element.fill
-                , Background.color <| Element.rgb 1 1 1
-                ]
-                Element.none
-            )
-          ]
-          ++ selectEnable
-        )
-        { onChange = round >> (LeftSet 7 0)
-        , label = Input.labelAbove [] (Element.none)
-        , min = 0
-        , max = toFloat outputColumns
-        , step = Just 1
-        , value = testExtractLeft model |> toFloat
-        , thumb = Input.defaultThumb
-        -- , thumb = Input.thumb
-        --   [ Element.behindContent input
-        --   ]
+        , label = Input.labelLeft [] gripperElement
         }
 
     shade : List ( Element.Attribute Msg )
     shade =
       [ Element.inFront
         ( Element.el
+          (
             [ Background.color ( uiRGBA shadeSubstance )
             , Element.width Element.fill
             , Element.height Element.fill
@@ -1235,7 +1268,12 @@ editPane ( (Model modelRecord) as model ) =
             --   , left = 7
             --   }
             ]
-            slider
+          ++( List.map
+              Element.htmlAttribute
+              <|Html5.DragDrop.droppable DragDropMsg 1
+            )
+          )
+          input
         )
       ]
       ++selectDisable
@@ -1338,11 +1376,20 @@ view model =
 -- test/temporary scaffoldings
 
 
+testRow : Int
+testRow =
+  7
+
+
+testColRank =
+  0
+
+
 testExtractWord : Model -> String
 testExtractWord ( ( Model modelRecord) as model ) =
   case modelRecord.puzzle of
     Puzzle puzzle ->
-      case Dictionary.listGetElement 7 puzzle of
+      case Dictionary.listGetElement testRow puzzle of
         Nothing ->
           ";P"
 
@@ -1357,7 +1404,7 @@ testExtractLeft : Model -> Int
 testExtractLeft ( ( Model modelRecord) as model ) =
   case modelRecord.puzzle of
     Puzzle puzzle ->
-      case Dictionary.listGetElement 7 puzzle of
+      case Dictionary.listGetElement testRow puzzle of
         Nothing ->
           -10
 
