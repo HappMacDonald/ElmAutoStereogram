@@ -9,6 +9,23 @@ Bugs:
 ** I should probably try elm-live debug mode to catch that, hmm..
 
 
+Todo:
+* HiDPI testing from Tolana, and no Kukkutarma
+
+Joachim said:
+> For now, you can work around it, which is great, but involves some setup work. You can pass the devicePixelRatio as a Flag to the program, and then set the style width and height to the size you want and the attributes width and height to those dimensions multiplied by the pixel ratio. Something like
+> 
+>     [ width (w * pixelRatio)
+>     , height (h * pixelRatio)
+>     , style "width" (String.fromInt w ++ "px")
+>     , style "height" (String.fromInt h ++ "px")
+>     ]
+> As the attributes for the element.
+
+So I should test doing that.
+
+>>>>
+
 Here's my original design-doc:
 
 Now I just need to sit down and use some Elm to make the user interface
@@ -896,24 +913,27 @@ update msg ((Model modelRecord) as model) =
                   ( ( toFloat position.x ) / fontWidth - 4 )
                 |>Dictionary.intClampMinMax 0 79
 
-          x =
-            if leftNew<1
-            then Debug.log "zero?" "]"--(dragDropHandle, resultMaybe1)
-            else ""--(dragDropHandle, resultMaybe1)
+          -- x =
+          --   if leftNew<1
+          --   then Debug.log "zero?" "]"--(dragDropHandle, resultMaybe1)
+          --   else ""--(dragDropHandle, resultMaybe1)
 
           puzzleNew =
-            replaceWordPlacement testRow testColRank (Just leftNew) Nothing
+            if leftNew /= leftOld
+            then replaceWordPlacement testRow testColRank (Just leftNew) Nothing
+            else modelRecord.puzzle
 
-          (ascii, seed0) =
-            -- ( List.repeat outputRows (String.repeat outputColumns "2"), seed0 )
-            puzzleRender (puzzleNew, modelRecord.randomSeed)
+          (asciiNew, seed0) =
+            if leftOld /= leftNew
+            then puzzleRender (puzzleNew, modelRecord.randomSeed)
+            else (modelRecord.ascii, modelRecord.randomSeed)
 
         in
           ( Model
             { modelRecord
             | dragDropHandle = dragDropHandle
             , puzzle = puzzleNew
-            , ascii = ascii
+            , ascii = asciiNew
             , randomSeed = seed0
             }
           , Cmd.none

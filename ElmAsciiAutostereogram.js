@@ -6202,6 +6202,8 @@ var elm$random$Random$initialSeed = function (x) {
 	return elm$random$Random$next(
 		A2(elm$random$Random$Seed, state2, incr));
 };
+var norpan$elm_html5_drag_drop$Html5$DragDrop$NotDragging = {$: 'NotDragging'};
+var norpan$elm_html5_drag_drop$Html5$DragDrop$init = norpan$elm_html5_drag_drop$Html5$DragDrop$NotDragging;
 var author$project$ElmAutoStereogram$init = F3(
 	function (flags, url, navKey) {
 		var seed0 = elm$random$Random$initialSeed(0);
@@ -6212,7 +6214,7 @@ var author$project$ElmAutoStereogram$init = F3(
 		return A2(
 			author$project$ElmAutoStereogram$tabChange,
 			author$project$ElmAutoStereogram$Model(
-				{ascii: ascii, currentUrl: url, navKey: navKey, puzzle: author$project$ElmAutoStereogram$initialPuzzle, randomSeed: seed1, tab: author$project$ElmAutoStereogram$TabEdit}),
+				{ascii: ascii, currentUrl: url, dragDropHandle: norpan$elm_html5_drag_drop$Html5$DragDrop$init, navKey: navKey, puzzle: author$project$ElmAutoStereogram$initialPuzzle, randomSeed: seed1, tab: author$project$ElmAutoStereogram$TabEdit}),
 			url);
 	});
 var elm$core$Platform$Sub$batch = _Platform_batch;
@@ -6226,17 +6228,167 @@ var author$project$Dictionary$intClampMinMax = F3(
 	});
 var author$project$ElmAutoStereogram$emptyWordPlacement = author$project$ElmAutoStereogram$WordPlacement(
 	{left: 0, word: ''});
+var author$project$ElmAutoStereogram$fontSize = 20;
+var author$project$ElmAutoStereogram$fontWidth = 0.6 * author$project$ElmAutoStereogram$fontSize;
+var author$project$ElmAutoStereogram$testColRank = 0;
+var author$project$ElmAutoStereogram$testRow = 7;
+var author$project$ElmAutoStereogram$testExtractLeft = function (model) {
+	var modelRecord = model.a;
+	var _n0 = modelRecord.puzzle;
+	var puzzle = _n0.a;
+	var _n1 = A2(author$project$Dictionary$listGetElement, author$project$ElmAutoStereogram$testRow, puzzle);
+	if (_n1.$ === 'Nothing') {
+		return -10;
+	} else {
+		if (!_n1.a.b) {
+			return -10;
+		} else {
+			var _n2 = _n1.a;
+			var wordPlacement = _n2.a.a;
+			return wordPlacement.left;
+		}
+	}
+};
 var elm$browser$Browser$Navigation$pushUrl = _Browser_pushUrl;
+var elm$core$Basics$round = _Basics_round;
 var elm$core$Debug$log = _Debug_log;
+var norpan$elm_html5_drag_drop$Html5$DragDrop$getDroppablePosition = function (model) {
+	if (model.$ === 'DraggedOver') {
+		var pos = model.d;
+		return pos;
+	} else {
+		return elm$core$Maybe$Nothing;
+	}
+};
+var norpan$elm_html5_drag_drop$Html5$DragDrop$DraggedOver = F4(
+	function (a, b, c, d) {
+		return {$: 'DraggedOver', a: a, b: b, c: c, d: d};
+	});
+var norpan$elm_html5_drag_drop$Html5$DragDrop$Dragging = function (a) {
+	return {$: 'Dragging', a: a};
+};
+var norpan$elm_html5_drag_drop$Html5$DragDrop$updateCommon = F3(
+	function (sticky, msg, model) {
+		var _n0 = _Utils_Tuple3(msg, model, sticky);
+		_n0$9:
+		while (true) {
+			switch (_n0.a.$) {
+				case 'DragStart':
+					var _n1 = _n0.a;
+					var dragId = _n1.a;
+					return _Utils_Tuple2(
+						norpan$elm_html5_drag_drop$Html5$DragDrop$Dragging(dragId),
+						elm$core$Maybe$Nothing);
+				case 'DragEnd':
+					var _n2 = _n0.a;
+					return _Utils_Tuple2(norpan$elm_html5_drag_drop$Html5$DragDrop$NotDragging, elm$core$Maybe$Nothing);
+				case 'DragEnter':
+					switch (_n0.b.$) {
+						case 'Dragging':
+							var dropId = _n0.a.a;
+							var dragId = _n0.b.a;
+							return _Utils_Tuple2(
+								A4(norpan$elm_html5_drag_drop$Html5$DragDrop$DraggedOver, dragId, dropId, 0, elm$core$Maybe$Nothing),
+								elm$core$Maybe$Nothing);
+						case 'DraggedOver':
+							var dropId = _n0.a.a;
+							var _n3 = _n0.b;
+							var dragId = _n3.a;
+							var pos = _n3.d;
+							return _Utils_Tuple2(
+								A4(norpan$elm_html5_drag_drop$Html5$DragDrop$DraggedOver, dragId, dropId, 0, pos),
+								elm$core$Maybe$Nothing);
+						default:
+							break _n0$9;
+					}
+				case 'DragLeave':
+					if ((_n0.b.$ === 'DraggedOver') && (!_n0.c)) {
+						var dropId_ = _n0.a.a;
+						var _n4 = _n0.b;
+						var dragId = _n4.a;
+						var dropId = _n4.b;
+						return _Utils_eq(dropId_, dropId) ? _Utils_Tuple2(
+							norpan$elm_html5_drag_drop$Html5$DragDrop$Dragging(dragId),
+							elm$core$Maybe$Nothing) : _Utils_Tuple2(model, elm$core$Maybe$Nothing);
+					} else {
+						break _n0$9;
+					}
+				case 'DragOver':
+					switch (_n0.b.$) {
+						case 'Dragging':
+							var _n5 = _n0.a;
+							var dropId = _n5.a;
+							var timeStamp = _n5.b;
+							var pos = _n5.c;
+							var dragId = _n0.b.a;
+							return _Utils_Tuple2(
+								A4(
+									norpan$elm_html5_drag_drop$Html5$DragDrop$DraggedOver,
+									dragId,
+									dropId,
+									timeStamp,
+									elm$core$Maybe$Just(pos)),
+								elm$core$Maybe$Nothing);
+						case 'DraggedOver':
+							var _n6 = _n0.a;
+							var dropId = _n6.a;
+							var timeStamp = _n6.b;
+							var pos = _n6.c;
+							var _n7 = _n0.b;
+							var dragId = _n7.a;
+							var currentDropId = _n7.b;
+							var currentTimeStamp = _n7.c;
+							var currentPos = _n7.d;
+							return _Utils_eq(timeStamp, currentTimeStamp) ? _Utils_Tuple2(model, elm$core$Maybe$Nothing) : ((_Utils_eq(
+								elm$core$Maybe$Just(pos),
+								currentPos) && _Utils_eq(dropId, currentDropId)) ? _Utils_Tuple2(model, elm$core$Maybe$Nothing) : _Utils_Tuple2(
+								A4(
+									norpan$elm_html5_drag_drop$Html5$DragDrop$DraggedOver,
+									dragId,
+									dropId,
+									timeStamp,
+									elm$core$Maybe$Just(pos)),
+								elm$core$Maybe$Nothing));
+						default:
+							break _n0$9;
+					}
+				default:
+					switch (_n0.b.$) {
+						case 'Dragging':
+							var _n8 = _n0.a;
+							var dropId = _n8.a;
+							var pos = _n8.b;
+							var dragId = _n0.b.a;
+							return _Utils_Tuple2(
+								norpan$elm_html5_drag_drop$Html5$DragDrop$NotDragging,
+								elm$core$Maybe$Just(
+									_Utils_Tuple3(dragId, dropId, pos)));
+						case 'DraggedOver':
+							var _n9 = _n0.a;
+							var dropId = _n9.a;
+							var pos = _n9.b;
+							var _n10 = _n0.b;
+							var dragId = _n10.a;
+							return _Utils_Tuple2(
+								norpan$elm_html5_drag_drop$Html5$DragDrop$NotDragging,
+								elm$core$Maybe$Just(
+									_Utils_Tuple3(dragId, dropId, pos)));
+						default:
+							break _n0$9;
+					}
+			}
+		}
+		return _Utils_Tuple2(model, elm$core$Maybe$Nothing);
+	});
+var norpan$elm_html5_drag_drop$Html5$DragDrop$update = norpan$elm_html5_drag_drop$Html5$DragDrop$updateCommon(false);
 var author$project$ElmAutoStereogram$update = F2(
 	function (msg, model) {
 		var modelRecord = model.a;
-		var x = A2(elm$core$Debug$log, 'update msg=', msg);
 		var replaceWordPlacement = F4(
 			function (row, colRank, leftMaybe, wordMaybe) {
 				var puzzleOld = function () {
-					var _n8 = modelRecord.puzzle;
-					var puzzle = _n8.a;
+					var _n13 = modelRecord.puzzle;
+					var puzzle = _n13.a;
 					return puzzle;
 				}();
 				var rowOld = A2(
@@ -6247,12 +6399,12 @@ var author$project$ElmAutoStereogram$update = F2(
 					elm$core$Maybe$withDefault,
 					author$project$ElmAutoStereogram$emptyWordPlacement,
 					A2(author$project$Dictionary$listGetElement, colRank, rowOld));
-				var _n4 = function () {
+				var _n9 = function () {
 					var wordPlacementOldRecord = wordPlacementOld.a;
 					return _Utils_Tuple2(wordPlacementOldRecord.word, wordPlacementOldRecord.left);
 				}();
-				var wordOld = _n4.a;
-				var leftOld = _n4.b;
+				var wordOld = _n9.a;
+				var leftOld = _n9.b;
 				var leftNew = function () {
 					if (leftMaybe.$ === 'Nothing') {
 						return leftOld;
@@ -6337,17 +6489,62 @@ var author$project$ElmAutoStereogram$update = F2(
 							modelRecord,
 							{ascii: ascii, puzzle: puzzleNew, randomSeed: seed0})),
 					elm$core$Platform$Cmd$none);
+			case 'DragDropMsg':
+				var dragDropMsg = msg.a;
+				var leftOld = author$project$ElmAutoStereogram$testExtractLeft(model);
+				var _n4 = A2(norpan$elm_html5_drag_drop$Html5$DragDrop$update, dragDropMsg, modelRecord.dragDropHandle);
+				var dragDropHandle = _n4.a;
+				var resultMaybe1 = _n4.b;
+				var positionMaybe = function () {
+					if (resultMaybe1.$ === 'Just') {
+						var _n8 = resultMaybe1.a;
+						var position = _n8.c;
+						return elm$core$Maybe$Just(position);
+					} else {
+						return A2(
+							elm$core$Debug$log,
+							'[',
+							norpan$elm_html5_drag_drop$Html5$DragDrop$getDroppablePosition(dragDropHandle));
+					}
+				}();
+				var leftNew = function () {
+					if (positionMaybe.$ === 'Nothing') {
+						return leftOld;
+					} else {
+						var position = positionMaybe.a;
+						return A3(
+							author$project$Dictionary$intClampMinMax,
+							0,
+							79,
+							elm$core$Basics$round((position.x / author$project$ElmAutoStereogram$fontWidth) - 4));
+					}
+				}();
+				var puzzleNew = A4(
+					replaceWordPlacement,
+					author$project$ElmAutoStereogram$testRow,
+					author$project$ElmAutoStereogram$testColRank,
+					elm$core$Maybe$Just(leftNew),
+					elm$core$Maybe$Nothing);
+				var _n5 = author$project$ElmAutoStereogram$puzzleRender(
+					_Utils_Tuple2(puzzleNew, modelRecord.randomSeed));
+				var ascii = _n5.a;
+				var seed0 = _n5.b;
+				var x = (leftNew < 1) ? A2(elm$core$Debug$log, 'zero?', ']') : '';
+				return _Utils_Tuple2(
+					author$project$ElmAutoStereogram$Model(
+						_Utils_update(
+							modelRecord,
+							{ascii: ascii, dragDropHandle: dragDropHandle, puzzle: puzzleNew, randomSeed: seed0})),
+					elm$core$Platform$Cmd$none);
 			default:
 				return _Utils_Tuple2(model, elm$core$Platform$Cmd$none);
 		}
 	});
-var author$project$ElmAutoStereogram$fontSize = 20;
 var author$project$ElmAutoStereogram$contentHeight = 24 * author$project$ElmAutoStereogram$fontSize;
 var author$project$ElmAutoStereogram$contentWidth = 52 * author$project$ElmAutoStereogram$fontSize;
-var author$project$ElmAutoStereogram$LeftSet = F3(
-	function (a, b, c) {
-		return {$: 'LeftSet', a: a, b: b, c: c};
-	});
+var author$project$ElmAutoStereogram$DragDropMsg = function (a) {
+	return {$: 'DragDropMsg', a: a};
+};
 var author$project$ElmAutoStereogram$WordSet = F3(
 	function (a, b, c) {
 		return {$: 'WordSet', a: a, b: b, c: c};
@@ -6359,7 +6556,6 @@ var author$project$ElmAutoStereogram$RGB = F3(
 var author$project$ElmAutoStereogram$editBoxBorderColor = A3(author$project$ElmAutoStereogram$RGB, 0.5, 0.5, 0.5);
 var author$project$ElmAutoStereogram$editPaneDownOffset = 5;
 var author$project$ElmAutoStereogram$editPaneRightOffset = 7;
-var author$project$ElmAutoStereogram$fontWidth = 0.6 * author$project$ElmAutoStereogram$fontSize;
 var author$project$ElmAutoStereogram$inputHeight = (author$project$ElmAutoStereogram$fontSize / 2) | 0;
 var author$project$ElmAutoStereogram$contentMargin = 8;
 var author$project$ElmAutoStereogram$markdownCodeIndent = 4;
@@ -6748,7 +6944,6 @@ var mdgriffith$elm_ui$Internal$Model$lengthClassName = function (x) {
 			return 'max' + (elm$core$String$fromInt(max) + mdgriffith$elm_ui$Internal$Model$lengthClassName(len));
 	}
 };
-var elm$core$Basics$round = _Basics_round;
 var mdgriffith$elm_ui$Internal$Model$floatClass = function (x) {
 	return elm$core$String$fromInt(
 		elm$core$Basics$round(x * 255));
@@ -11791,28 +11986,11 @@ var author$project$ElmAutoStereogram$RGBA = F4(
 		return {blue: blue, green: green, opacity: opacity, red: red};
 	});
 var author$project$ElmAutoStereogram$shadeSubstance = A4(author$project$ElmAutoStereogram$RGBA, 0, 0, 0, 0);
-var author$project$ElmAutoStereogram$testExtractLeft = function (model) {
-	var modelRecord = model.a;
-	var _n0 = modelRecord.puzzle;
-	var puzzle = _n0.a;
-	var _n1 = A2(author$project$Dictionary$listGetElement, 7, puzzle);
-	if (_n1.$ === 'Nothing') {
-		return -10;
-	} else {
-		if (!_n1.a.b) {
-			return -10;
-		} else {
-			var _n2 = _n1.a;
-			var wordPlacement = _n2.a.a;
-			return wordPlacement.left;
-		}
-	}
-};
 var author$project$ElmAutoStereogram$testExtractWord = function (model) {
 	var modelRecord = model.a;
 	var _n0 = modelRecord.puzzle;
 	var puzzle = _n0.a;
-	var _n1 = A2(author$project$Dictionary$listGetElement, 7, puzzle);
+	var _n1 = A2(author$project$Dictionary$listGetElement, author$project$ElmAutoStereogram$testRow, puzzle);
 	if (_n1.$ === 'Nothing') {
 		return ';P';
 	} else {
@@ -11840,11 +12018,6 @@ var mdgriffith$elm_ui$Element$rgba = mdgriffith$elm_ui$Internal$Model$Rgba;
 var author$project$ElmAutoStereogram$uiRGBA = function (rgba) {
 	return A4(mdgriffith$elm_ui$Element$rgba, rgba.red, rgba.green, rgba.blue, rgba.opacity);
 };
-var elm$core$Basics$composeR = F3(
-	function (f, g, x) {
-		return g(
-			f(x));
-	});
 var mdgriffith$elm_ui$Internal$Flag$transparency = mdgriffith$elm_ui$Internal$Flag$flag(0);
 var mdgriffith$elm_ui$Internal$Model$Transparency = F2(
 	function (a, b) {
@@ -11865,14 +12038,6 @@ var mdgriffith$elm_ui$Element$alpha = function (o) {
 			mdgriffith$elm_ui$Internal$Model$Transparency,
 			'transparency-' + mdgriffith$elm_ui$Internal$Model$floatClass(transparency),
 			transparency));
-};
-var mdgriffith$elm_ui$Internal$Model$Behind = {$: 'Behind'};
-var mdgriffith$elm_ui$Internal$Model$Nearby = F2(
-	function (a, b) {
-		return {$: 'Nearby', a: a, b: b};
-	});
-var mdgriffith$elm_ui$Element$behindContent = function (element) {
-	return A2(mdgriffith$elm_ui$Internal$Model$Nearby, mdgriffith$elm_ui$Internal$Model$Behind, element);
 };
 var mdgriffith$elm_ui$Internal$Model$AlignX = function (a) {
 	return {$: 'AlignX', a: a};
@@ -11906,6 +12071,10 @@ var mdgriffith$elm_ui$Internal$Model$Fill = function (a) {
 };
 var mdgriffith$elm_ui$Element$fill = mdgriffith$elm_ui$Internal$Model$Fill(1);
 var mdgriffith$elm_ui$Internal$Model$InFront = {$: 'InFront'};
+var mdgriffith$elm_ui$Internal$Model$Nearby = F2(
+	function (a, b) {
+		return {$: 'Nearby', a: a, b: b};
+	});
 var mdgriffith$elm_ui$Element$inFront = function (element) {
 	return A2(mdgriffith$elm_ui$Internal$Model$Nearby, mdgriffith$elm_ui$Internal$Model$InFront, element);
 };
@@ -11941,12 +12110,6 @@ var mdgriffith$elm_ui$Element$moveRight = function (x) {
 		mdgriffith$elm_ui$Internal$Flag$moveX,
 		mdgriffith$elm_ui$Internal$Model$MoveX(x));
 };
-var mdgriffith$elm_ui$Internal$Model$Empty = {$: 'Empty'};
-var mdgriffith$elm_ui$Element$none = mdgriffith$elm_ui$Internal$Model$Empty;
-var mdgriffith$elm_ui$Internal$Model$Px = function (a) {
-	return {$: 'Px', a: a};
-};
-var mdgriffith$elm_ui$Element$px = mdgriffith$elm_ui$Internal$Model$Px;
 var mdgriffith$elm_ui$Internal$Flag$spacing = mdgriffith$elm_ui$Internal$Flag$flag(3);
 var mdgriffith$elm_ui$Internal$Model$SpacingStyle = F3(
 	function (a, b, c) {
@@ -11994,76 +12157,21 @@ var mdgriffith$elm_ui$Internal$Model$Class = F2(
 		return {$: 'Class', a: a, b: b};
 	});
 var mdgriffith$elm_ui$Element$Font$center = A2(mdgriffith$elm_ui$Internal$Model$Class, mdgriffith$elm_ui$Internal$Flag$fontAlignment, mdgriffith$elm_ui$Internal$Style$classes.textCenter);
-var mdgriffith$elm_ui$Internal$Flag$borderColor = mdgriffith$elm_ui$Internal$Flag$flag(28);
-var mdgriffith$elm_ui$Element$Border$color = function (clr) {
-	return A2(
-		mdgriffith$elm_ui$Internal$Model$StyleClass,
-		mdgriffith$elm_ui$Internal$Flag$borderColor,
-		A3(
-			mdgriffith$elm_ui$Internal$Model$Colored,
-			'bc-' + mdgriffith$elm_ui$Internal$Model$formatColorClass(clr),
-			'border-color',
-			clr));
-};
-var mdgriffith$elm_ui$Internal$Flag$borderRound = mdgriffith$elm_ui$Internal$Flag$flag(17);
-var mdgriffith$elm_ui$Element$Border$rounded = function (radius) {
-	return A2(
-		mdgriffith$elm_ui$Internal$Model$StyleClass,
-		mdgriffith$elm_ui$Internal$Flag$borderRound,
-		A3(
-			mdgriffith$elm_ui$Internal$Model$Single,
-			'br-' + elm$core$String$fromInt(radius),
-			'border-radius',
-			elm$core$String$fromInt(radius) + 'px'));
-};
-var mdgriffith$elm_ui$Internal$Model$BorderWidth = F5(
-	function (a, b, c, d, e) {
-		return {$: 'BorderWidth', a: a, b: b, c: c, d: d, e: e};
-	});
-var mdgriffith$elm_ui$Element$Border$width = function (v) {
-	return A2(
-		mdgriffith$elm_ui$Internal$Model$StyleClass,
-		mdgriffith$elm_ui$Internal$Flag$borderWidth,
-		A5(
-			mdgriffith$elm_ui$Internal$Model$BorderWidth,
-			'b-' + elm$core$String$fromInt(v),
-			v,
-			v,
-			v,
-			v));
-};
-var mdgriffith$elm_ui$Element$Input$Thumb = function (a) {
-	return {$: 'Thumb', a: a};
-};
-var mdgriffith$elm_ui$Element$Input$defaultThumb = mdgriffith$elm_ui$Element$Input$Thumb(
-	_List_fromArray(
-		[
-			mdgriffith$elm_ui$Element$width(
-			mdgriffith$elm_ui$Element$px(16)),
-			mdgriffith$elm_ui$Element$height(
-			mdgriffith$elm_ui$Element$px(16)),
-			mdgriffith$elm_ui$Element$Border$rounded(8),
-			mdgriffith$elm_ui$Element$Border$width(1),
-			mdgriffith$elm_ui$Element$Border$color(
-			A3(mdgriffith$elm_ui$Element$rgb, 0.5, 0.5, 0.5)),
-			mdgriffith$elm_ui$Element$Background$color(
-			A3(mdgriffith$elm_ui$Element$rgb, 1, 1, 1))
-		]));
-var mdgriffith$elm_ui$Element$Input$Above = {$: 'Above'};
 var mdgriffith$elm_ui$Element$Input$Label = F3(
 	function (a, b, c) {
 		return {$: 'Label', a: a, b: b, c: c};
 	});
-var mdgriffith$elm_ui$Element$Input$labelAbove = mdgriffith$elm_ui$Element$Input$Label(mdgriffith$elm_ui$Element$Input$Above);
-var elm$core$String$toFloat = _String_toFloat;
-var elm$html$Html$Attributes$attribute = elm$virtual_dom$VirtualDom$attribute;
-var elm$html$Html$Attributes$max = elm$html$Html$Attributes$stringProperty('max');
-var elm$html$Html$Attributes$min = elm$html$Html$Attributes$stringProperty('min');
-var elm$html$Html$Attributes$step = function (n) {
-	return A2(elm$html$Html$Attributes$stringProperty, 'step', n);
+var mdgriffith$elm_ui$Element$Input$OnLeft = {$: 'OnLeft'};
+var mdgriffith$elm_ui$Element$Input$labelLeft = mdgriffith$elm_ui$Element$Input$Label(mdgriffith$elm_ui$Element$Input$OnLeft);
+var mdgriffith$elm_ui$Element$Input$TextInputNode = function (a) {
+	return {$: 'TextInputNode', a: a};
 };
+var elm$core$Basics$composeL = F3(
+	function (g, f, x) {
+		return g(
+			f(x));
+	});
 var elm$html$Html$Attributes$type_ = elm$html$Html$Attributes$stringProperty('type');
-var elm$html$Html$Attributes$value = elm$html$Html$Attributes$stringProperty('value');
 var elm$html$Html$Events$alwaysStop = function (x) {
 	return _Utils_Tuple2(x, true);
 };
@@ -12098,37 +12206,63 @@ var elm$html$Html$Events$onInput = function (tagger) {
 			elm$html$Html$Events$alwaysStop,
 			A2(elm$json$Json$Decode$map, tagger, elm$html$Html$Events$targetValue)));
 };
+var mdgriffith$elm_ui$Internal$Model$paddingName = F4(
+	function (top, right, bottom, left) {
+		return 'pad-' + (elm$core$String$fromInt(top) + ('-' + (elm$core$String$fromInt(right) + ('-' + (elm$core$String$fromInt(bottom) + ('-' + elm$core$String$fromInt(left)))))));
+	});
+var mdgriffith$elm_ui$Element$paddingEach = function (_n0) {
+	var top = _n0.top;
+	var right = _n0.right;
+	var bottom = _n0.bottom;
+	var left = _n0.left;
+	return (_Utils_eq(top, right) && (_Utils_eq(top, bottom) && _Utils_eq(top, left))) ? A2(
+		mdgriffith$elm_ui$Internal$Model$StyleClass,
+		mdgriffith$elm_ui$Internal$Flag$padding,
+		A5(
+			mdgriffith$elm_ui$Internal$Model$PaddingStyle,
+			'p-' + elm$core$String$fromInt(top),
+			top,
+			top,
+			top,
+			top)) : A2(
+		mdgriffith$elm_ui$Internal$Model$StyleClass,
+		mdgriffith$elm_ui$Internal$Flag$padding,
+		A5(
+			mdgriffith$elm_ui$Internal$Model$PaddingStyle,
+			A4(mdgriffith$elm_ui$Internal$Model$paddingName, top, right, bottom, left),
+			top,
+			right,
+			bottom,
+			left));
+};
+var mdgriffith$elm_ui$Internal$Flag$borderColor = mdgriffith$elm_ui$Internal$Flag$flag(28);
+var mdgriffith$elm_ui$Element$Border$color = function (clr) {
+	return A2(
+		mdgriffith$elm_ui$Internal$Model$StyleClass,
+		mdgriffith$elm_ui$Internal$Flag$borderColor,
+		A3(
+			mdgriffith$elm_ui$Internal$Model$Colored,
+			'bc-' + mdgriffith$elm_ui$Internal$Model$formatColorClass(clr),
+			'border-color',
+			clr));
+};
+var mdgriffith$elm_ui$Internal$Flag$fontColor = mdgriffith$elm_ui$Internal$Flag$flag(14);
+var mdgriffith$elm_ui$Element$Font$color = function (fontColor) {
+	return A2(
+		mdgriffith$elm_ui$Internal$Model$StyleClass,
+		mdgriffith$elm_ui$Internal$Flag$fontColor,
+		A3(
+			mdgriffith$elm_ui$Internal$Model$Colored,
+			'fc-' + mdgriffith$elm_ui$Internal$Model$formatColorClass(fontColor),
+			'color',
+			fontColor));
+};
+var mdgriffith$elm_ui$Element$Input$Padding = F4(
+	function (a, b, c, d) {
+		return {$: 'Padding', a: a, b: b, c: c, d: d};
+	});
 var mdgriffith$elm_ui$Internal$Model$AsRow = {$: 'AsRow'};
 var mdgriffith$elm_ui$Internal$Model$asRow = mdgriffith$elm_ui$Internal$Model$AsRow;
-var mdgriffith$elm_ui$Element$row = F2(
-	function (attrs, children) {
-		return A4(
-			mdgriffith$elm_ui$Internal$Model$element,
-			mdgriffith$elm_ui$Internal$Model$asRow,
-			mdgriffith$elm_ui$Internal$Model$div,
-			A2(
-				elm$core$List$cons,
-				mdgriffith$elm_ui$Internal$Model$htmlClass(mdgriffith$elm_ui$Internal$Style$classes.contentLeft + (' ' + mdgriffith$elm_ui$Internal$Style$classes.contentCenterY)),
-				A2(
-					elm$core$List$cons,
-					mdgriffith$elm_ui$Element$width(mdgriffith$elm_ui$Element$shrink),
-					A2(
-						elm$core$List$cons,
-						mdgriffith$elm_ui$Element$height(mdgriffith$elm_ui$Element$shrink),
-						attrs))),
-			mdgriffith$elm_ui$Internal$Model$Unkeyed(children));
-	});
-var mdgriffith$elm_ui$Element$spacingXY = F2(
-	function (x, y) {
-		return A2(
-			mdgriffith$elm_ui$Internal$Model$StyleClass,
-			mdgriffith$elm_ui$Internal$Flag$spacing,
-			A3(
-				mdgriffith$elm_ui$Internal$Model$SpacingStyle,
-				A2(mdgriffith$elm_ui$Internal$Model$spacingName, x, y),
-				x,
-				y));
-	});
 var mdgriffith$elm_ui$Element$Input$applyLabel = F3(
 	function (attrs, label, input) {
 		if (label.$ === 'HiddenLabel') {
@@ -12193,542 +12327,39 @@ var mdgriffith$elm_ui$Element$Input$applyLabel = F3(
 			}
 		}
 	});
-var mdgriffith$elm_ui$Internal$Model$Describe = function (a) {
-	return {$: 'Describe', a: a};
-};
-var mdgriffith$elm_ui$Internal$Model$Label = function (a) {
-	return {$: 'Label', a: a};
-};
-var mdgriffith$elm_ui$Internal$Model$NoAttribute = {$: 'NoAttribute'};
-var mdgriffith$elm_ui$Element$Input$hiddenLabelAttribute = function (label) {
-	if (label.$ === 'HiddenLabel') {
-		var textLabel = label.a;
-		return mdgriffith$elm_ui$Internal$Model$Describe(
-			mdgriffith$elm_ui$Internal$Model$Label(textLabel));
-	} else {
-		return mdgriffith$elm_ui$Internal$Model$NoAttribute;
-	}
-};
-var mdgriffith$elm_ui$Element$Input$isHiddenLabel = function (label) {
-	if (label.$ === 'HiddenLabel') {
-		return true;
-	} else {
-		return false;
-	}
-};
-var elm$core$Basics$abs = function (n) {
-	return (n < 0) ? (-n) : n;
-};
-var mdgriffith$elm_ui$Element$fillPortion = mdgriffith$elm_ui$Internal$Model$Fill;
-var elm$virtual_dom$VirtualDom$mapAttribute = _VirtualDom_mapAttribute;
-var elm$core$Basics$composeL = F3(
-	function (g, f, x) {
-		return g(
-			f(x));
-	});
-var elm$virtual_dom$VirtualDom$map = _VirtualDom_map;
-var mdgriffith$elm_ui$Internal$Model$map = F2(
-	function (fn, el) {
-		switch (el.$) {
-			case 'Styled':
-				var styled = el.a;
-				return mdgriffith$elm_ui$Internal$Model$Styled(
-					{
-						html: F2(
-							function (add, context) {
-								return A2(
-									elm$virtual_dom$VirtualDom$map,
-									fn,
-									A2(styled.html, add, context));
-							}),
-						styles: styled.styles
-					});
-			case 'Unstyled':
-				var html = el.a;
-				return mdgriffith$elm_ui$Internal$Model$Unstyled(
-					A2(
-						elm$core$Basics$composeL,
-						elm$virtual_dom$VirtualDom$map(fn),
-						html));
-			case 'Text':
-				var str = el.a;
-				return mdgriffith$elm_ui$Internal$Model$Text(str);
-			default:
-				return mdgriffith$elm_ui$Internal$Model$Empty;
-		}
-	});
-var mdgriffith$elm_ui$Internal$Model$mapAttr = F2(
-	function (fn, attr) {
-		switch (attr.$) {
-			case 'NoAttribute':
-				return mdgriffith$elm_ui$Internal$Model$NoAttribute;
-			case 'Describe':
-				var description = attr.a;
-				return mdgriffith$elm_ui$Internal$Model$Describe(description);
-			case 'AlignX':
-				var x = attr.a;
-				return mdgriffith$elm_ui$Internal$Model$AlignX(x);
-			case 'AlignY':
-				var y = attr.a;
-				return mdgriffith$elm_ui$Internal$Model$AlignY(y);
-			case 'Width':
-				var x = attr.a;
-				return mdgriffith$elm_ui$Internal$Model$Width(x);
-			case 'Height':
-				var x = attr.a;
-				return mdgriffith$elm_ui$Internal$Model$Height(x);
-			case 'Class':
-				var x = attr.a;
-				var y = attr.b;
-				return A2(mdgriffith$elm_ui$Internal$Model$Class, x, y);
-			case 'StyleClass':
-				var flag = attr.a;
-				var style = attr.b;
-				return A2(mdgriffith$elm_ui$Internal$Model$StyleClass, flag, style);
-			case 'Nearby':
-				var location = attr.a;
-				var elem = attr.b;
-				return A2(
-					mdgriffith$elm_ui$Internal$Model$Nearby,
-					location,
-					A2(mdgriffith$elm_ui$Internal$Model$map, fn, elem));
-			case 'Attr':
-				var htmlAttr = attr.a;
-				return mdgriffith$elm_ui$Internal$Model$Attr(
-					A2(elm$virtual_dom$VirtualDom$mapAttribute, fn, htmlAttr));
-			default:
-				var fl = attr.a;
-				var trans = attr.b;
-				return A2(mdgriffith$elm_ui$Internal$Model$TransformComponent, fl, trans);
-		}
-	});
-var mdgriffith$elm_ui$Element$Input$viewHorizontalThumb = F3(
-	function (factor, thumbAttributes, trackHeight) {
-		return A2(
-			mdgriffith$elm_ui$Element$row,
-			_List_fromArray(
-				[
-					mdgriffith$elm_ui$Element$width(mdgriffith$elm_ui$Element$fill),
-					mdgriffith$elm_ui$Element$height(
-					A2(elm$core$Maybe$withDefault, mdgriffith$elm_ui$Element$fill, trackHeight)),
-					mdgriffith$elm_ui$Element$centerY
-				]),
-			_List_fromArray(
-				[
-					A2(
-					mdgriffith$elm_ui$Element$el,
-					_List_fromArray(
-						[
-							mdgriffith$elm_ui$Element$width(
-							mdgriffith$elm_ui$Element$fillPortion(
-								elm$core$Basics$round(factor * 10000)))
-						]),
-					mdgriffith$elm_ui$Element$none),
-					A2(
-					mdgriffith$elm_ui$Element$el,
-					A2(
-						elm$core$List$cons,
-						mdgriffith$elm_ui$Element$centerY,
-						A2(
-							elm$core$List$map,
-							mdgriffith$elm_ui$Internal$Model$mapAttr(elm$core$Basics$never),
-							thumbAttributes)),
-					mdgriffith$elm_ui$Element$none),
-					A2(
-					mdgriffith$elm_ui$Element$el,
-					_List_fromArray(
-						[
-							mdgriffith$elm_ui$Element$width(
-							mdgriffith$elm_ui$Element$fillPortion(
-								elm$core$Basics$round(
-									elm$core$Basics$abs(1 - factor) * 10000)))
-						]),
-					mdgriffith$elm_ui$Element$none)
-				]));
-	});
-var mdgriffith$elm_ui$Element$Input$viewVerticalThumb = F3(
-	function (factor, thumbAttributes, trackWidth) {
-		return A2(
-			mdgriffith$elm_ui$Element$column,
-			_List_fromArray(
-				[
-					mdgriffith$elm_ui$Element$height(mdgriffith$elm_ui$Element$fill),
-					mdgriffith$elm_ui$Element$width(
-					A2(elm$core$Maybe$withDefault, mdgriffith$elm_ui$Element$fill, trackWidth)),
-					mdgriffith$elm_ui$Element$centerX
-				]),
-			_List_fromArray(
-				[
-					A2(
-					mdgriffith$elm_ui$Element$el,
-					_List_fromArray(
-						[
-							mdgriffith$elm_ui$Element$height(
-							mdgriffith$elm_ui$Element$fillPortion(
-								elm$core$Basics$round(
-									elm$core$Basics$abs(1 - factor) * 10000)))
-						]),
-					mdgriffith$elm_ui$Element$none),
-					A2(
-					mdgriffith$elm_ui$Element$el,
-					A2(
-						elm$core$List$cons,
-						mdgriffith$elm_ui$Element$centerX,
-						A2(
-							elm$core$List$map,
-							mdgriffith$elm_ui$Internal$Model$mapAttr(elm$core$Basics$never),
-							thumbAttributes)),
-					mdgriffith$elm_ui$Element$none),
-					A2(
-					mdgriffith$elm_ui$Element$el,
-					_List_fromArray(
-						[
-							mdgriffith$elm_ui$Element$height(
-							mdgriffith$elm_ui$Element$fillPortion(
-								elm$core$Basics$round(factor * 10000)))
-						]),
-					mdgriffith$elm_ui$Element$none)
-				]));
-	});
-var mdgriffith$elm_ui$Internal$Model$LivePolite = {$: 'LivePolite'};
-var mdgriffith$elm_ui$Element$Region$announce = mdgriffith$elm_ui$Internal$Model$Describe(mdgriffith$elm_ui$Internal$Model$LivePolite);
-var mdgriffith$elm_ui$Internal$Flag$active = mdgriffith$elm_ui$Internal$Flag$flag(32);
-var mdgriffith$elm_ui$Internal$Flag$focus = mdgriffith$elm_ui$Internal$Flag$flag(31);
-var mdgriffith$elm_ui$Internal$Flag$hover = mdgriffith$elm_ui$Internal$Flag$flag(33);
-var mdgriffith$elm_ui$Internal$Model$getHeight = function (attrs) {
-	return A3(
-		elm$core$List$foldr,
-		F2(
-			function (attr, acc) {
-				if (acc.$ === 'Just') {
-					var x = acc.a;
-					return elm$core$Maybe$Just(x);
-				} else {
-					if (attr.$ === 'Height') {
-						var len = attr.a;
-						return elm$core$Maybe$Just(len);
-					} else {
-						return elm$core$Maybe$Nothing;
-					}
-				}
-			}),
-		elm$core$Maybe$Nothing,
-		attrs);
-};
-var mdgriffith$elm_ui$Internal$Model$getSpacing = F2(
-	function (attrs, _default) {
-		return A2(
-			elm$core$Maybe$withDefault,
-			_default,
-			A3(
-				elm$core$List$foldr,
-				F2(
-					function (attr, acc) {
-						if (acc.$ === 'Just') {
-							var x = acc.a;
-							return elm$core$Maybe$Just(x);
-						} else {
-							if ((attr.$ === 'StyleClass') && (attr.b.$ === 'SpacingStyle')) {
-								var _n2 = attr.b;
-								var x = _n2.b;
-								var y = _n2.c;
-								return elm$core$Maybe$Just(
-									_Utils_Tuple2(x, y));
-							} else {
-								return elm$core$Maybe$Nothing;
-							}
-						}
-					}),
-				elm$core$Maybe$Nothing,
-				attrs));
-	});
-var mdgriffith$elm_ui$Internal$Model$getWidth = function (attrs) {
-	return A3(
-		elm$core$List$foldr,
-		F2(
-			function (attr, acc) {
-				if (acc.$ === 'Just') {
-					var x = acc.a;
-					return elm$core$Maybe$Just(x);
-				} else {
-					if (attr.$ === 'Width') {
-						var len = attr.a;
-						return elm$core$Maybe$Just(len);
-					} else {
-						return elm$core$Maybe$Nothing;
-					}
-				}
-			}),
-		elm$core$Maybe$Nothing,
-		attrs);
-};
-var mdgriffith$elm_ui$Element$Input$slider = F2(
-	function (attributes, input) {
-		var trackWidth = mdgriffith$elm_ui$Internal$Model$getWidth(attributes);
-		var trackHeight = mdgriffith$elm_ui$Internal$Model$getHeight(attributes);
-		var vertical = function () {
-			var _n8 = _Utils_Tuple2(trackWidth, trackHeight);
-			_n8$3:
-			while (true) {
-				if (_n8.a.$ === 'Nothing') {
-					if (_n8.b.$ === 'Nothing') {
-						var _n9 = _n8.a;
-						var _n10 = _n8.b;
-						return false;
-					} else {
-						break _n8$3;
-					}
-				} else {
-					if ((_n8.a.a.$ === 'Px') && (_n8.b.$ === 'Just')) {
-						switch (_n8.b.a.$) {
-							case 'Px':
-								var w = _n8.a.a.a;
-								var h = _n8.b.a.a;
-								return _Utils_cmp(h, w) > 0;
-							case 'Fill':
-								return true;
-							default:
-								break _n8$3;
-						}
-					} else {
-						break _n8$3;
-					}
-				}
-			}
-			return false;
-		}();
-		var factor = (input.value - input.min) / (input.max - input.min);
-		var _n0 = input.thumb;
-		var thumbAttributes = _n0.a;
-		var height = mdgriffith$elm_ui$Internal$Model$getHeight(thumbAttributes);
-		var thumbHeightString = function () {
-			if (height.$ === 'Nothing') {
-				return '20px';
-			} else {
-				if (height.a.$ === 'Px') {
-					var px = height.a.a;
-					return elm$core$String$fromInt(px) + 'px';
-				} else {
-					return '100%';
-				}
-			}
-		}();
-		var width = mdgriffith$elm_ui$Internal$Model$getWidth(thumbAttributes);
-		var thumbWidthString = function () {
-			if (width.$ === 'Nothing') {
-				return '20px';
-			} else {
-				if (width.a.$ === 'Px') {
-					var px = width.a.a;
-					return elm$core$String$fromInt(px) + 'px';
-				} else {
-					return '100%';
-				}
-			}
-		}();
-		var className = 'thmb-' + (thumbWidthString + ('-' + thumbHeightString));
-		var thumbShadowStyle = _List_fromArray(
-			[
-				A2(mdgriffith$elm_ui$Internal$Model$Property, 'width', thumbWidthString),
-				A2(mdgriffith$elm_ui$Internal$Model$Property, 'height', thumbHeightString)
-			]);
-		var _n1 = A2(
-			mdgriffith$elm_ui$Internal$Model$getSpacing,
-			attributes,
-			_Utils_Tuple2(5, 5));
-		var spacingX = _n1.a;
-		var spacingY = _n1.b;
-		return A3(
-			mdgriffith$elm_ui$Element$Input$applyLabel,
-			_List_fromArray(
-				[
-					mdgriffith$elm_ui$Element$Input$isHiddenLabel(input.label) ? mdgriffith$elm_ui$Internal$Model$NoAttribute : A2(mdgriffith$elm_ui$Element$spacingXY, spacingX, spacingY),
-					mdgriffith$elm_ui$Element$Region$announce,
-					mdgriffith$elm_ui$Element$width(
-					function () {
-						if (trackWidth.$ === 'Nothing') {
-							return mdgriffith$elm_ui$Element$fill;
-						} else {
-							if (trackWidth.a.$ === 'Px') {
-								return mdgriffith$elm_ui$Element$shrink;
-							} else {
-								var x = trackWidth.a;
-								return x;
-							}
-						}
-					}()),
-					mdgriffith$elm_ui$Element$height(
-					function () {
-						if (trackHeight.$ === 'Nothing') {
-							return mdgriffith$elm_ui$Element$shrink;
-						} else {
-							if (trackHeight.a.$ === 'Px') {
-								return mdgriffith$elm_ui$Element$shrink;
-							} else {
-								var x = trackHeight.a;
-								return x;
-							}
-						}
-					}())
-				]),
-			input.label,
-			A2(
-				mdgriffith$elm_ui$Element$row,
-				_List_fromArray(
-					[
-						mdgriffith$elm_ui$Element$width(
-						A2(elm$core$Maybe$withDefault, mdgriffith$elm_ui$Element$fill, trackWidth)),
-						mdgriffith$elm_ui$Element$height(
-						A2(
-							elm$core$Maybe$withDefault,
-							mdgriffith$elm_ui$Element$px(20),
-							trackHeight))
-					]),
-				_List_fromArray(
-					[
-						A4(
-						mdgriffith$elm_ui$Internal$Model$element,
-						mdgriffith$elm_ui$Internal$Model$asEl,
-						mdgriffith$elm_ui$Internal$Model$NodeName('input'),
-						_List_fromArray(
-							[
-								mdgriffith$elm_ui$Element$Input$hiddenLabelAttribute(input.label),
-								A2(
-								mdgriffith$elm_ui$Internal$Model$StyleClass,
-								mdgriffith$elm_ui$Internal$Flag$active,
-								A2(mdgriffith$elm_ui$Internal$Model$Style, 'input[type=\"range\"].' + (className + '::-moz-range-thumb'), thumbShadowStyle)),
-								A2(
-								mdgriffith$elm_ui$Internal$Model$StyleClass,
-								mdgriffith$elm_ui$Internal$Flag$hover,
-								A2(mdgriffith$elm_ui$Internal$Model$Style, 'input[type=\"range\"].' + (className + '::-webkit-slider-thumb'), thumbShadowStyle)),
-								A2(
-								mdgriffith$elm_ui$Internal$Model$StyleClass,
-								mdgriffith$elm_ui$Internal$Flag$focus,
-								A2(mdgriffith$elm_ui$Internal$Model$Style, 'input[type=\"range\"].' + (className + '::-ms-thumb'), thumbShadowStyle)),
-								mdgriffith$elm_ui$Internal$Model$Attr(
-								elm$html$Html$Attributes$class(className + ' focusable-parent')),
-								mdgriffith$elm_ui$Internal$Model$Attr(
-								elm$html$Html$Events$onInput(
-									function (str) {
-										var _n4 = elm$core$String$toFloat(str);
-										if (_n4.$ === 'Nothing') {
-											return input.onChange(0);
-										} else {
-											var val = _n4.a;
-											return input.onChange(val);
-										}
-									})),
-								mdgriffith$elm_ui$Internal$Model$Attr(
-								elm$html$Html$Attributes$type_('range')),
-								mdgriffith$elm_ui$Internal$Model$Attr(
-								elm$html$Html$Attributes$step(
-									function () {
-										var _n5 = input.step;
-										if (_n5.$ === 'Nothing') {
-											return 'any';
-										} else {
-											var step = _n5.a;
-											return elm$core$String$fromFloat(step);
-										}
-									}())),
-								mdgriffith$elm_ui$Internal$Model$Attr(
-								elm$html$Html$Attributes$min(
-									elm$core$String$fromFloat(input.min))),
-								mdgriffith$elm_ui$Internal$Model$Attr(
-								elm$html$Html$Attributes$max(
-									elm$core$String$fromFloat(input.max))),
-								mdgriffith$elm_ui$Internal$Model$Attr(
-								elm$html$Html$Attributes$value(
-									elm$core$String$fromFloat(input.value))),
-								vertical ? mdgriffith$elm_ui$Internal$Model$Attr(
-								A2(elm$html$Html$Attributes$attribute, 'orient', 'vertical')) : mdgriffith$elm_ui$Internal$Model$NoAttribute,
-								mdgriffith$elm_ui$Element$width(
-								vertical ? A2(
-									elm$core$Maybe$withDefault,
-									mdgriffith$elm_ui$Element$px(20),
-									trackHeight) : A2(elm$core$Maybe$withDefault, mdgriffith$elm_ui$Element$fill, trackWidth)),
-								mdgriffith$elm_ui$Element$height(
-								vertical ? A2(elm$core$Maybe$withDefault, mdgriffith$elm_ui$Element$fill, trackWidth) : A2(
-									elm$core$Maybe$withDefault,
-									mdgriffith$elm_ui$Element$px(20),
-									trackHeight))
-							]),
-						mdgriffith$elm_ui$Internal$Model$Unkeyed(_List_Nil)),
-						A2(
-						mdgriffith$elm_ui$Element$el,
-						A2(
-							elm$core$List$cons,
-							mdgriffith$elm_ui$Element$width(
-								A2(elm$core$Maybe$withDefault, mdgriffith$elm_ui$Element$fill, trackWidth)),
-							A2(
-								elm$core$List$cons,
-								mdgriffith$elm_ui$Element$height(
-									A2(
-										elm$core$Maybe$withDefault,
-										mdgriffith$elm_ui$Element$px(20),
-										trackHeight)),
-								_Utils_ap(
-									attributes,
-									_List_fromArray(
-										[
-											mdgriffith$elm_ui$Element$behindContent(
-											vertical ? A3(mdgriffith$elm_ui$Element$Input$viewVerticalThumb, factor, thumbAttributes, trackWidth) : A3(mdgriffith$elm_ui$Element$Input$viewHorizontalThumb, factor, thumbAttributes, trackHeight))
-										])))),
-						mdgriffith$elm_ui$Element$none)
-					])));
-	});
-var mdgriffith$elm_ui$Element$Input$TextInputNode = function (a) {
-	return {$: 'TextInputNode', a: a};
-};
-var mdgriffith$elm_ui$Internal$Model$paddingName = F4(
-	function (top, right, bottom, left) {
-		return 'pad-' + (elm$core$String$fromInt(top) + ('-' + (elm$core$String$fromInt(right) + ('-' + (elm$core$String$fromInt(bottom) + ('-' + elm$core$String$fromInt(left)))))));
-	});
-var mdgriffith$elm_ui$Element$paddingEach = function (_n0) {
-	var top = _n0.top;
-	var right = _n0.right;
-	var bottom = _n0.bottom;
-	var left = _n0.left;
-	return (_Utils_eq(top, right) && (_Utils_eq(top, bottom) && _Utils_eq(top, left))) ? A2(
-		mdgriffith$elm_ui$Internal$Model$StyleClass,
-		mdgriffith$elm_ui$Internal$Flag$padding,
-		A5(
-			mdgriffith$elm_ui$Internal$Model$PaddingStyle,
-			'p-' + elm$core$String$fromInt(top),
-			top,
-			top,
-			top,
-			top)) : A2(
-		mdgriffith$elm_ui$Internal$Model$StyleClass,
-		mdgriffith$elm_ui$Internal$Flag$padding,
-		A5(
-			mdgriffith$elm_ui$Internal$Model$PaddingStyle,
-			A4(mdgriffith$elm_ui$Internal$Model$paddingName, top, right, bottom, left),
-			top,
-			right,
-			bottom,
-			left));
-};
-var mdgriffith$elm_ui$Internal$Flag$fontColor = mdgriffith$elm_ui$Internal$Flag$flag(14);
-var mdgriffith$elm_ui$Element$Font$color = function (fontColor) {
-	return A2(
-		mdgriffith$elm_ui$Internal$Model$StyleClass,
-		mdgriffith$elm_ui$Internal$Flag$fontColor,
-		A3(
-			mdgriffith$elm_ui$Internal$Model$Colored,
-			'fc-' + mdgriffith$elm_ui$Internal$Model$formatColorClass(fontColor),
-			'color',
-			fontColor));
-};
-var mdgriffith$elm_ui$Element$Input$Padding = F4(
-	function (a, b, c, d) {
-		return {$: 'Padding', a: a, b: b, c: c, d: d};
-	});
+var elm$html$Html$Attributes$attribute = elm$virtual_dom$VirtualDom$attribute;
 var mdgriffith$elm_ui$Element$Input$autofill = A2(
 	elm$core$Basics$composeL,
 	mdgriffith$elm_ui$Internal$Model$Attr,
 	elm$html$Html$Attributes$attribute('autocomplete'));
 var mdgriffith$elm_ui$Element$Input$charcoal = A3(mdgriffith$elm_ui$Element$rgb, 136 / 255, 138 / 255, 133 / 255);
+var mdgriffith$elm_ui$Internal$Flag$borderRound = mdgriffith$elm_ui$Internal$Flag$flag(17);
+var mdgriffith$elm_ui$Element$Border$rounded = function (radius) {
+	return A2(
+		mdgriffith$elm_ui$Internal$Model$StyleClass,
+		mdgriffith$elm_ui$Internal$Flag$borderRound,
+		A3(
+			mdgriffith$elm_ui$Internal$Model$Single,
+			'br-' + elm$core$String$fromInt(radius),
+			'border-radius',
+			elm$core$String$fromInt(radius) + 'px'));
+};
+var mdgriffith$elm_ui$Internal$Model$BorderWidth = F5(
+	function (a, b, c, d, e) {
+		return {$: 'BorderWidth', a: a, b: b, c: c, d: d, e: e};
+	});
+var mdgriffith$elm_ui$Element$Border$width = function (v) {
+	return A2(
+		mdgriffith$elm_ui$Internal$Model$StyleClass,
+		mdgriffith$elm_ui$Internal$Flag$borderWidth,
+		A5(
+			mdgriffith$elm_ui$Internal$Model$BorderWidth,
+			'b-' + elm$core$String$fromInt(v),
+			v,
+			v,
+			v,
+			v));
+};
 var mdgriffith$elm_ui$Element$Input$darkGrey = A3(mdgriffith$elm_ui$Element$rgb, 186 / 255, 189 / 255, 182 / 255);
 var mdgriffith$elm_ui$Element$Input$defaultTextPadding = A2(mdgriffith$elm_ui$Element$paddingXY, 12, 12);
 var mdgriffith$elm_ui$Element$Input$white = A3(mdgriffith$elm_ui$Element$rgb, 1, 1, 1);
@@ -12751,8 +12382,24 @@ var mdgriffith$elm_ui$Element$Input$hasFocusStyle = function (attr) {
 		return false;
 	}
 };
+var mdgriffith$elm_ui$Internal$Model$NoAttribute = {$: 'NoAttribute'};
 var mdgriffith$elm_ui$Element$Input$focusDefault = function (attrs) {
 	return A2(elm$core$List$any, mdgriffith$elm_ui$Element$Input$hasFocusStyle, attrs) ? mdgriffith$elm_ui$Internal$Model$NoAttribute : mdgriffith$elm_ui$Internal$Model$htmlClass('focusable');
+};
+var mdgriffith$elm_ui$Internal$Model$Describe = function (a) {
+	return {$: 'Describe', a: a};
+};
+var mdgriffith$elm_ui$Internal$Model$Label = function (a) {
+	return {$: 'Label', a: a};
+};
+var mdgriffith$elm_ui$Element$Input$hiddenLabelAttribute = function (label) {
+	if (label.$ === 'HiddenLabel') {
+		var textLabel = label.a;
+		return mdgriffith$elm_ui$Internal$Model$Describe(
+			mdgriffith$elm_ui$Internal$Model$Label(textLabel));
+	} else {
+		return mdgriffith$elm_ui$Internal$Model$NoAttribute;
+	}
 };
 var mdgriffith$elm_ui$Element$Input$inheritablePlaceholderAttributes = function (attr) {
 	_n0$3:
@@ -12775,6 +12422,13 @@ var mdgriffith$elm_ui$Element$Input$inheritablePlaceholderAttributes = function 
 		}
 	}
 	return false;
+};
+var mdgriffith$elm_ui$Element$Input$isHiddenLabel = function (label) {
+	if (label.$ === 'HiddenLabel') {
+		return true;
+	} else {
+		return false;
+	}
 };
 var elm$json$Json$Encode$bool = _Json_wrap;
 var elm$html$Html$Attributes$boolProperty = F2(
@@ -12819,7 +12473,10 @@ var mdgriffith$elm_ui$Element$Input$textHeightContent = F4(
 				'height',
 				heightValue(newlineCount)));
 	});
+var elm$html$Html$Attributes$value = elm$html$Html$Attributes$stringProperty('value');
 var mdgriffith$elm_ui$Element$Input$value = A2(elm$core$Basics$composeL, mdgriffith$elm_ui$Internal$Model$Attr, elm$html$Html$Attributes$value);
+var mdgriffith$elm_ui$Internal$Model$LivePolite = {$: 'LivePolite'};
+var mdgriffith$elm_ui$Element$Region$announce = mdgriffith$elm_ui$Internal$Model$Describe(mdgriffith$elm_ui$Internal$Model$LivePolite);
 var mdgriffith$elm_ui$Internal$Flag$cursor = mdgriffith$elm_ui$Internal$Flag$flag(21);
 var mdgriffith$elm_ui$Internal$Model$filter = function (attrs) {
 	return A3(
@@ -13278,12 +12935,188 @@ var mdgriffith$elm_ui$Element$Input$text = mdgriffith$elm_ui$Element$Input$textH
 		spellchecked: false,
 		type_: mdgriffith$elm_ui$Element$Input$TextInputNode('text')
 	});
+var elm$json$Json$Decode$value = _Json_decodeValue;
+var norpan$elm_html5_drag_drop$Html5$DragDrop$DragEnd = {$: 'DragEnd'};
+var norpan$elm_html5_drag_drop$Html5$DragDrop$DragStart = F2(
+	function (a, b) {
+		return {$: 'DragStart', a: a, b: b};
+	});
+var elm$virtual_dom$VirtualDom$Custom = function (a) {
+	return {$: 'Custom', a: a};
+};
+var elm$html$Html$Events$custom = F2(
+	function (event, decoder) {
+		return A2(
+			elm$virtual_dom$VirtualDom$on,
+			event,
+			elm$virtual_dom$VirtualDom$Custom(decoder));
+	});
+var norpan$elm_html5_drag_drop$Html5$DragDrop$onWithOptions = F3(
+	function (name, _n0, decoder) {
+		var stopPropagation = _n0.stopPropagation;
+		var preventDefault = _n0.preventDefault;
+		return A2(
+			elm$html$Html$Events$custom,
+			name,
+			A2(
+				elm$json$Json$Decode$map,
+				function (msg) {
+					return {message: msg, preventDefault: preventDefault, stopPropagation: stopPropagation};
+				},
+				decoder));
+	});
+var norpan$elm_html5_drag_drop$Html5$DragDrop$draggable = F2(
+	function (wrap, drag) {
+		return _List_fromArray(
+			[
+				A2(elm$html$Html$Attributes$attribute, 'draggable', 'true'),
+				A3(
+				norpan$elm_html5_drag_drop$Html5$DragDrop$onWithOptions,
+				'dragstart',
+				{preventDefault: false, stopPropagation: true},
+				A2(
+					elm$json$Json$Decode$map,
+					A2(
+						elm$core$Basics$composeL,
+						wrap,
+						norpan$elm_html5_drag_drop$Html5$DragDrop$DragStart(drag)),
+					elm$json$Json$Decode$value)),
+				A3(
+				norpan$elm_html5_drag_drop$Html5$DragDrop$onWithOptions,
+				'dragend',
+				{preventDefault: false, stopPropagation: true},
+				elm$json$Json$Decode$succeed(
+					wrap(norpan$elm_html5_drag_drop$Html5$DragDrop$DragEnd)))
+			]);
+	});
+var norpan$elm_html5_drag_drop$Html5$DragDrop$DragEnter = function (a) {
+	return {$: 'DragEnter', a: a};
+};
+var norpan$elm_html5_drag_drop$Html5$DragDrop$DragLeave = function (a) {
+	return {$: 'DragLeave', a: a};
+};
+var norpan$elm_html5_drag_drop$Html5$DragDrop$DragOver = F3(
+	function (a, b, c) {
+		return {$: 'DragOver', a: a, b: b, c: c};
+	});
+var norpan$elm_html5_drag_drop$Html5$DragDrop$Drop = F2(
+	function (a, b) {
+		return {$: 'Drop', a: a, b: b};
+	});
+var elm$json$Json$Decode$float = _Json_decodeFloat;
+var elm$json$Json$Decode$int = _Json_decodeInt;
+var elm$json$Json$Decode$map4 = _Json_map4;
+var norpan$elm_html5_drag_drop$Html5$DragDrop$Position = F4(
+	function (width, height, x, y) {
+		return {height: height, width: width, x: x, y: y};
+	});
+var norpan$elm_html5_drag_drop$Html5$DragDrop$positionDecoder = A5(
+	elm$json$Json$Decode$map4,
+	norpan$elm_html5_drag_drop$Html5$DragDrop$Position,
+	A2(
+		elm$json$Json$Decode$at,
+		_List_fromArray(
+			['currentTarget', 'clientWidth']),
+		elm$json$Json$Decode$int),
+	A2(
+		elm$json$Json$Decode$at,
+		_List_fromArray(
+			['currentTarget', 'clientHeight']),
+		elm$json$Json$Decode$int),
+	A2(
+		elm$json$Json$Decode$map,
+		elm$core$Basics$round,
+		A2(
+			elm$json$Json$Decode$at,
+			_List_fromArray(
+				['offsetX']),
+			elm$json$Json$Decode$float)),
+	A2(
+		elm$json$Json$Decode$map,
+		elm$core$Basics$round,
+		A2(
+			elm$json$Json$Decode$at,
+			_List_fromArray(
+				['offsetY']),
+			elm$json$Json$Decode$float)));
+var norpan$elm_html5_drag_drop$Html5$DragDrop$timeStampDecoder = A2(
+	elm$json$Json$Decode$map,
+	elm$core$Basics$round,
+	A2(
+		elm$json$Json$Decode$at,
+		_List_fromArray(
+			['timeStamp']),
+		elm$json$Json$Decode$float));
+var norpan$elm_html5_drag_drop$Html5$DragDrop$droppable = F2(
+	function (wrap, dropId) {
+		return _List_fromArray(
+			[
+				A3(
+				norpan$elm_html5_drag_drop$Html5$DragDrop$onWithOptions,
+				'dragenter',
+				{preventDefault: true, stopPropagation: true},
+				elm$json$Json$Decode$succeed(
+					wrap(
+						norpan$elm_html5_drag_drop$Html5$DragDrop$DragEnter(dropId)))),
+				A3(
+				norpan$elm_html5_drag_drop$Html5$DragDrop$onWithOptions,
+				'dragleave',
+				{preventDefault: true, stopPropagation: true},
+				elm$json$Json$Decode$succeed(
+					wrap(
+						norpan$elm_html5_drag_drop$Html5$DragDrop$DragLeave(dropId)))),
+				A3(
+				norpan$elm_html5_drag_drop$Html5$DragDrop$onWithOptions,
+				'dragover',
+				{preventDefault: true, stopPropagation: false},
+				A2(
+					elm$json$Json$Decode$map,
+					wrap,
+					A3(
+						elm$json$Json$Decode$map2,
+						norpan$elm_html5_drag_drop$Html5$DragDrop$DragOver(dropId),
+						norpan$elm_html5_drag_drop$Html5$DragDrop$timeStampDecoder,
+						norpan$elm_html5_drag_drop$Html5$DragDrop$positionDecoder))),
+				A3(
+				norpan$elm_html5_drag_drop$Html5$DragDrop$onWithOptions,
+				'drop',
+				{preventDefault: true, stopPropagation: true},
+				A2(
+					elm$json$Json$Decode$map,
+					A2(
+						elm$core$Basics$composeL,
+						wrap,
+						norpan$elm_html5_drag_drop$Html5$DragDrop$Drop(dropId)),
+					norpan$elm_html5_drag_drop$Html5$DragDrop$positionDecoder))
+			]);
+	});
 var author$project$ElmAutoStereogram$editPane = function (model) {
 	var modelRecord = model.a;
-	var rowIndex = 7;
+	var rowIndex = author$project$ElmAutoStereogram$testRow;
 	var offsetY = mdgriffith$elm_ui$Element$moveDown(author$project$ElmAutoStereogram$editPaneDownOffset + (rowIndex * author$project$ElmAutoStereogram$fontSize));
 	var left = author$project$ElmAutoStereogram$testExtractLeft(model);
 	var offsetX = mdgriffith$elm_ui$Element$moveRight(author$project$ElmAutoStereogram$editPaneRightOffset + (left * author$project$ElmAutoStereogram$fontWidth));
+	var gripperElement = A2(
+		mdgriffith$elm_ui$Element$el,
+		_Utils_ap(
+			_List_fromArray(
+				[
+					mdgriffith$elm_ui$Element$width(mdgriffith$elm_ui$Element$fill),
+					mdgriffith$elm_ui$Element$height(mdgriffith$elm_ui$Element$fill),
+					mdgriffith$elm_ui$Element$Background$color(
+					author$project$ElmAutoStereogram$uiRGB(author$project$ElmAutoStereogram$editBoxBorderColor)),
+					offsetX,
+					offsetY
+				]),
+			A2(
+				elm$core$List$map,
+				mdgriffith$elm_ui$Element$htmlAttribute,
+				A2(norpan$elm_html5_drag_drop$Html5$DragDrop$draggable, author$project$ElmAutoStereogram$DragDropMsg, 1))),
+		A2(
+			mdgriffith$elm_ui$Element$el,
+			_List_fromArray(
+				[mdgriffith$elm_ui$Element$Font$center, mdgriffith$elm_ui$Element$centerX, mdgriffith$elm_ui$Element$centerY]),
+			mdgriffith$elm_ui$Element$text('|||')));
 	var input = A2(
 		mdgriffith$elm_ui$Element$Input$text,
 		_Utils_ap(
@@ -13297,50 +13130,16 @@ var author$project$ElmAutoStereogram$editPane = function (model) {
 						mdgriffith$elm_ui$Element$maximum,
 						elm$core$Basics$round((2 + author$project$ElmAutoStereogram$maxMessageLength) * author$project$ElmAutoStereogram$fontWidth),
 						mdgriffith$elm_ui$Element$fill)),
-					mdgriffith$elm_ui$Element$alpha(0.3),
+					mdgriffith$elm_ui$Element$alpha(0.7),
 					offsetX,
 					offsetY
 				]),
 			author$project$ElmAutoStereogram$selectEnable),
 		{
-			label: A2(mdgriffith$elm_ui$Element$Input$labelAbove, _List_Nil, mdgriffith$elm_ui$Element$none),
-			onChange: A2(author$project$ElmAutoStereogram$WordSet, 7, 0),
+			label: A2(mdgriffith$elm_ui$Element$Input$labelLeft, _List_Nil, gripperElement),
+			onChange: A2(author$project$ElmAutoStereogram$WordSet, author$project$ElmAutoStereogram$testRow, author$project$ElmAutoStereogram$testColRank),
 			placeholder: elm$core$Maybe$Nothing,
 			text: author$project$ElmAutoStereogram$testExtractWord(model)
-		});
-	var slider = A2(
-		mdgriffith$elm_ui$Element$Input$slider,
-		_Utils_ap(
-			_List_fromArray(
-				[
-					mdgriffith$elm_ui$Element$height(
-					mdgriffith$elm_ui$Element$px(author$project$ElmAutoStereogram$fontSize)),
-					mdgriffith$elm_ui$Element$inFront(input),
-					offsetY,
-					mdgriffith$elm_ui$Element$behindContent(
-					A2(
-						mdgriffith$elm_ui$Element$el,
-						_List_fromArray(
-							[
-								mdgriffith$elm_ui$Element$width(mdgriffith$elm_ui$Element$fill),
-								mdgriffith$elm_ui$Element$height(mdgriffith$elm_ui$Element$fill),
-								mdgriffith$elm_ui$Element$Background$color(
-								A3(mdgriffith$elm_ui$Element$rgb, 1, 1, 1))
-							]),
-						mdgriffith$elm_ui$Element$none))
-				]),
-			author$project$ElmAutoStereogram$selectEnable),
-		{
-			label: A2(mdgriffith$elm_ui$Element$Input$labelAbove, _List_Nil, mdgriffith$elm_ui$Element$none),
-			max: author$project$ElmAutoStereogram$outputColumns,
-			min: 0,
-			onChange: A2(
-				elm$core$Basics$composeR,
-				elm$core$Basics$round,
-				A2(author$project$ElmAutoStereogram$LeftSet, 7, 0)),
-			step: elm$core$Maybe$Just(1),
-			thumb: mdgriffith$elm_ui$Element$Input$defaultThumb,
-			value: author$project$ElmAutoStereogram$testExtractLeft(model)
 		});
 	var shade = _Utils_ap(
 		_List_fromArray(
@@ -13348,30 +13147,21 @@ var author$project$ElmAutoStereogram$editPane = function (model) {
 				mdgriffith$elm_ui$Element$inFront(
 				A2(
 					mdgriffith$elm_ui$Element$el,
-					_List_fromArray(
-						[
-							mdgriffith$elm_ui$Element$Background$color(
-							author$project$ElmAutoStereogram$uiRGBA(author$project$ElmAutoStereogram$shadeSubstance)),
-							mdgriffith$elm_ui$Element$width(mdgriffith$elm_ui$Element$fill),
-							mdgriffith$elm_ui$Element$height(mdgriffith$elm_ui$Element$fill)
-						]),
-					slider))
+					_Utils_ap(
+						_List_fromArray(
+							[
+								mdgriffith$elm_ui$Element$Background$color(
+								author$project$ElmAutoStereogram$uiRGBA(author$project$ElmAutoStereogram$shadeSubstance)),
+								mdgriffith$elm_ui$Element$width(mdgriffith$elm_ui$Element$fill),
+								mdgriffith$elm_ui$Element$height(mdgriffith$elm_ui$Element$fill)
+							]),
+						A2(
+							elm$core$List$map,
+							mdgriffith$elm_ui$Element$htmlAttribute,
+							A2(norpan$elm_html5_drag_drop$Html5$DragDrop$droppable, author$project$ElmAutoStereogram$DragDropMsg, 1))),
+					input))
 			]),
 		author$project$ElmAutoStereogram$selectDisable);
-	var gripperElement = A2(
-		mdgriffith$elm_ui$Element$el,
-		_List_fromArray(
-			[
-				mdgriffith$elm_ui$Element$width(mdgriffith$elm_ui$Element$fill),
-				mdgriffith$elm_ui$Element$height(mdgriffith$elm_ui$Element$fill),
-				mdgriffith$elm_ui$Element$Background$color(
-				author$project$ElmAutoStereogram$uiRGB(author$project$ElmAutoStereogram$editBoxBorderColor))
-			]),
-		A2(
-			mdgriffith$elm_ui$Element$el,
-			_List_fromArray(
-				[mdgriffith$elm_ui$Element$Font$center, mdgriffith$elm_ui$Element$centerX, mdgriffith$elm_ui$Element$centerY]),
-			mdgriffith$elm_ui$Element$text('|||')));
 	return A2(
 		author$project$ElmAutoStereogram$plainTextPane,
 		model,
@@ -13519,6 +13309,9 @@ var joakin$elm_canvas$Canvas$fillRect = F5(
 						elm$json$Json$Encode$float(h)
 					])));
 	});
+var elm$core$Basics$abs = function (n) {
+	return (n < 0) ? (-n) : n;
+};
 var elm$core$Basics$pi = _Basics_pi;
 var elm$core$Basics$degrees = function (angleInDegrees) {
 	return (angleInDegrees * elm$core$Basics$pi) / 180;
@@ -13758,6 +13551,7 @@ var author$project$ElmAutoStereogram$tabBorderColor = A3(author$project$ElmAutoS
 var author$project$ElmAutoStereogram$tabColor = A3(author$project$ElmAutoStereogram$RGB, 0.9, 0.8, 0.7);
 var author$project$ElmAutoStereogram$tabColorActive = A3(author$project$ElmAutoStereogram$RGB, 0.8, 0.7, 0.6);
 var author$project$ElmAutoStereogram$tabFontSize = ((author$project$ElmAutoStereogram$fontSize * 4) / 3) | 0;
+var mdgriffith$elm_ui$Element$fillPortion = mdgriffith$elm_ui$Internal$Model$Fill;
 var elm$html$Html$Attributes$href = function (url) {
 	return A2(
 		elm$html$Html$Attributes$stringProperty,
@@ -14164,6 +13958,24 @@ var mdgriffith$elm_ui$Element$minimum = F2(
 	function (i, l) {
 		return A2(mdgriffith$elm_ui$Internal$Model$Min, i, l);
 	});
+var mdgriffith$elm_ui$Element$row = F2(
+	function (attrs, children) {
+		return A4(
+			mdgriffith$elm_ui$Internal$Model$element,
+			mdgriffith$elm_ui$Internal$Model$asRow,
+			mdgriffith$elm_ui$Internal$Model$div,
+			A2(
+				elm$core$List$cons,
+				mdgriffith$elm_ui$Internal$Model$htmlClass(mdgriffith$elm_ui$Internal$Style$classes.contentLeft + (' ' + mdgriffith$elm_ui$Internal$Style$classes.contentCenterY)),
+				A2(
+					elm$core$List$cons,
+					mdgriffith$elm_ui$Element$width(mdgriffith$elm_ui$Element$shrink),
+					A2(
+						elm$core$List$cons,
+						mdgriffith$elm_ui$Element$height(mdgriffith$elm_ui$Element$shrink),
+						attrs))),
+			mdgriffith$elm_ui$Internal$Model$Unkeyed(children));
+	});
 var mdgriffith$elm_ui$Element$Font$family = function (families) {
 	return A2(
 		mdgriffith$elm_ui$Internal$Model$StyleClass,
@@ -14259,7 +14071,6 @@ var author$project$ElmAutoStereogram$view = function (model) {
 	};
 };
 var elm$browser$Browser$application = _Browser_application;
-var elm$json$Json$Decode$value = _Json_decodeValue;
 var author$project$ElmAutoStereogram$main = elm$browser$Browser$application(
 	{init: author$project$ElmAutoStereogram$init, onUrlChange: author$project$ElmAutoStereogram$UrlChanged, onUrlRequest: author$project$ElmAutoStereogram$LinkClicked, subscriptions: author$project$ElmAutoStereogram$subscriptions, update: author$project$ElmAutoStereogram$update, view: author$project$ElmAutoStereogram$view});
 _Platform_export({'ElmAutoStereogram':{'init':author$project$ElmAutoStereogram$main(elm$json$Json$Decode$value)(0)}});}(this));
