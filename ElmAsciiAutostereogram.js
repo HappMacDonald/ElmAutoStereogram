@@ -5014,51 +5014,15 @@ var author$project$ElmAutoStereogram$initialPuzzle = author$project$ElmAutoStere
 				author$project$ElmAutoStereogram$WordPlacement(
 				{left: 63, word: 'life'})
 			]),
-			_List_fromArray(
-			[
-				author$project$ElmAutoStereogram$WordPlacement(
-				{left: 63, word: 'life'})
-			]),
-			_List_fromArray(
-			[
-				author$project$ElmAutoStereogram$WordPlacement(
-				{left: 63, word: 'life'})
-			]),
-			_List_fromArray(
-			[
-				author$project$ElmAutoStereogram$WordPlacement(
-				{left: 63, word: 'life'})
-			]),
-			_List_fromArray(
-			[
-				author$project$ElmAutoStereogram$WordPlacement(
-				{left: 63, word: 'life'})
-			]),
-			_List_fromArray(
-			[
-				author$project$ElmAutoStereogram$WordPlacement(
-				{left: 63, word: 'life'})
-			]),
-			_List_fromArray(
-			[
-				author$project$ElmAutoStereogram$WordPlacement(
-				{left: 63, word: 'life'})
-			]),
-			_List_fromArray(
-			[
-				author$project$ElmAutoStereogram$WordPlacement(
-				{left: 63, word: 'life'})
-			]),
-			_List_fromArray(
-			[
-				author$project$ElmAutoStereogram$WordPlacement(
-				{left: 63, word: 'life'})
-			]),
-			_List_fromArray(
-			[
-				author$project$ElmAutoStereogram$WordPlacement(
-				{left: 63, word: 'life'})
-			])
+			_List_Nil,
+			_List_Nil,
+			_List_Nil,
+			_List_Nil,
+			_List_Nil,
+			_List_Nil,
+			_List_Nil,
+			_List_Nil,
+			_List_Nil
 		]));
 var elm$core$Basics$sub = _Basics_sub;
 var author$project$Dictionary$decrement = function (value) {
@@ -5208,12 +5172,21 @@ var author$project$Dictionary$listGetOne = F2(
 		var last = author$project$Dictionary$decrement(length);
 		var _n0 = A2(
 			elm$random$Random$step,
-			A2(elm$random$Random$int, 1, last),
+			A2(elm$random$Random$int, 0, last),
 			seed0);
 		var which = _n0.a;
 		var seed1 = _n0.b;
 		var result = A2(author$project$Dictionary$listGetElement, which, list);
 		return _Utils_Tuple2(result, seed1);
+	});
+var author$project$Dictionary$maybeLazyDefault = F2(
+	function (defaultFunc, subjectMaybe) {
+		if (subjectMaybe.$ === 'Just') {
+			var just = subjectMaybe.a;
+			return just;
+		} else {
+			return defaultFunc(_Utils_Tuple0);
+		}
 	});
 var elm$core$Array$Array_elm_builtin = F4(
 	function (a, b, c, d) {
@@ -6128,22 +6101,26 @@ var author$project$ElmAutoStereogram$puzzleRender = function (_n0) {
 						var seedA1 = _n7.seedA1;
 						var _n8 = A2(
 							elm$core$Tuple$mapFirst,
-							elm$core$Maybe$withDefault(
-								_Utils_Tuple2('logicError', 'logicError')),
+							author$project$Dictionary$maybeLazyDefault(
+								function (_n10) {
+									return _Utils_Tuple2('logicError', 'logicError');
+								}),
 							A2(author$project$Dictionary$listGetOne, leftWordPairs, seedA1));
 						var _n9 = _n8.a;
 						var leftWord0 = _n9.a;
 						var leftWord1 = _n9.b;
 						var seedA2 = _n8.b;
-						var _n10 = A2(
+						var _n11 = A2(
 							elm$core$Tuple$mapFirst,
-							elm$core$Maybe$withDefault(
-								_Utils_Tuple2('logicError', 'logicError')),
+							author$project$Dictionary$maybeLazyDefault(
+								function (_n13) {
+									return _Utils_Tuple2('logicError', 'logicError');
+								}),
 							A2(author$project$Dictionary$listGetOne, rightWordPairs, seedA2));
-						var _n11 = _n10.a;
-						var rightWord0 = _n11.a;
-						var rightWord1 = _n11.b;
-						var seedA3 = _n10.b;
+						var _n12 = _n11.a;
+						var rightWord0 = _n12.a;
+						var rightWord1 = _n12.b;
+						var seedA3 = _n11.b;
 						var leftPattern = leftWord0 + (' ' + (word + (' ' + (rightWord0 + ' '))));
 						var rightPattern = leftWord1 + (' ' + (word + (' ' + (rightWord1 + ' '))));
 						return _Utils_Tuple2(
@@ -10620,44 +10597,32 @@ var author$project$ElmAutoStereogram$subscriptions = function (model) {
 };
 var author$project$ElmAutoStereogram$emptyWordPlacement = author$project$ElmAutoStereogram$WordPlacement(
 	{left: 0, word: ''});
+var author$project$ElmAutoStereogram$extractWordPlacement = F3(
+	function (model, maybeRow, colRank) {
+		var modelRecord = model.a;
+		var _n0 = modelRecord.puzzle;
+		var puzzle = _n0.a;
+		if (maybeRow.$ === 'Nothing') {
+			return elm$core$Maybe$Nothing;
+		} else {
+			var row = maybeRow.a;
+			var _n2 = A2(author$project$Dictionary$listGetElement, row, puzzle);
+			if (_n2.$ === 'Nothing') {
+				return elm$core$Maybe$Nothing;
+			} else {
+				if (!_n2.a.b) {
+					return elm$core$Maybe$Nothing;
+				} else {
+					var _n3 = _n2.a;
+					var wordPlacement = _n3.a;
+					return elm$core$Maybe$Just(wordPlacement);
+				}
+			}
+		}
+	});
 var author$project$ElmAutoStereogram$fontSize = 20;
 var author$project$ElmAutoStereogram$fontWidth = 0.6 * author$project$ElmAutoStereogram$fontSize;
 var author$project$ElmAutoStereogram$testColRank = 0;
-var author$project$ElmAutoStereogram$testRow = 7;
-var author$project$ElmAutoStereogram$testExtractLeft = function (model) {
-	var modelRecord = model.a;
-	var _n0 = modelRecord.puzzle;
-	var puzzle = _n0.a;
-	var _n1 = A2(author$project$Dictionary$listGetElement, author$project$ElmAutoStereogram$testRow, puzzle);
-	if (_n1.$ === 'Nothing') {
-		return -10;
-	} else {
-		if (!_n1.a.b) {
-			return -10;
-		} else {
-			var _n2 = _n1.a;
-			var wordPlacement = _n2.a.a;
-			return wordPlacement.left;
-		}
-	}
-};
-var author$project$ElmAutoStereogram$testExtractWord = function (model) {
-	var modelRecord = model.a;
-	var _n0 = modelRecord.puzzle;
-	var puzzle = _n0.a;
-	var _n1 = A2(author$project$Dictionary$listGetElement, author$project$ElmAutoStereogram$testRow, puzzle);
-	if (_n1.$ === 'Nothing') {
-		return ';P';
-	} else {
-		if (!_n1.a.b) {
-			return ';P';
-		} else {
-			var _n2 = _n1.a;
-			var wordPlacement = _n2.a.a;
-			return wordPlacement.word;
-		}
-	}
-};
 var author$project$Dictionary$intClampMinMax = F3(
 	function (start, end, number) {
 		return (_Utils_cmp(number, start) < 0) ? start : ((_Utils_cmp(number, end) > 0) ? end : number);
@@ -10671,8 +10636,23 @@ var author$project$ElmAutoStereogram$wordLeftClamp = F2(
 			left);
 	});
 var elm$browser$Browser$Navigation$pushUrl = _Browser_pushUrl;
+var elm$core$Basics$abs = function (n) {
+	return (n < 0) ? (-n) : n;
+};
 var elm$core$Basics$round = _Basics_round;
-var elm$core$Debug$log = _Debug_log;
+var norpan$elm_html5_drag_drop$Html5$DragDrop$getDragId = function (model) {
+	switch (model.$) {
+		case 'NotDragging':
+			return elm$core$Maybe$Nothing;
+		case 'Dragging':
+			var dragId = model.a;
+			return elm$core$Maybe$Just(dragId);
+		default:
+			var dragId = model.a;
+			var dropId = model.b;
+			return elm$core$Maybe$Just(dragId);
+	}
+};
 var norpan$elm_html5_drag_drop$Html5$DragDrop$getDropId = function (model) {
 	switch (model.$) {
 		case 'NotDragging':
@@ -10821,8 +10801,8 @@ var author$project$ElmAutoStereogram$update = F2(
 		var replaceWordPlacement = F4(
 			function (row, colRank, leftMaybe, wordMaybe) {
 				var puzzleOld = function () {
-					var _n12 = modelRecord.puzzle;
-					var puzzle = _n12.a;
+					var _n13 = modelRecord.puzzle;
+					var puzzle = _n13.a;
 					return puzzle;
 				}();
 				var rowOld = A2(
@@ -10833,12 +10813,12 @@ var author$project$ElmAutoStereogram$update = F2(
 					elm$core$Maybe$withDefault,
 					author$project$ElmAutoStereogram$emptyWordPlacement,
 					A2(author$project$Dictionary$listGetElement, colRank, rowOld));
-				var _n8 = function () {
+				var _n9 = function () {
 					var wordPlacementOldRecord = wordPlacementOld.a;
 					return _Utils_Tuple2(wordPlacementOldRecord.word, wordPlacementOldRecord.left);
 				}();
-				var wordOld = _n8.a;
-				var leftOld = _n8.b;
+				var wordOld = _n9.a;
+				var leftOld = _n9.b;
 				var wordNew = function () {
 					if (wordMaybe.$ === 'Nothing') {
 						return wordOld;
@@ -10851,7 +10831,7 @@ var author$project$ElmAutoStereogram$update = F2(
 				}();
 				var leftNew = function () {
 					if (leftMaybe.$ === 'Nothing') {
-						return leftOld;
+						return A2(author$project$ElmAutoStereogram$wordLeftClamp, wordNew, leftOld);
 					} else {
 						var left = leftMaybe.a;
 						return A2(author$project$ElmAutoStereogram$wordLeftClamp, wordNew, left);
@@ -10925,50 +10905,61 @@ var author$project$ElmAutoStereogram$update = F2(
 					elm$core$Platform$Cmd$none);
 			case 'DragDropMsg':
 				var dragDropMsg = msg.a;
-				var leftOld = author$project$ElmAutoStereogram$testExtractLeft(model);
 				var _n4 = A2(norpan$elm_html5_drag_drop$Html5$DragDrop$update, dragDropMsg, modelRecord.dragDropHandle);
 				var dragDropHandle = _n4.a;
 				var resultMaybe1 = _n4.b;
+				var dragIdMaybe = norpan$elm_html5_drag_drop$Html5$DragDrop$getDragId(dragDropHandle);
+				var wordPlacementMaybe = A3(author$project$ElmAutoStereogram$extractWordPlacement, model, dragIdMaybe, author$project$ElmAutoStereogram$testColRank);
 				var dropIdMaybe = norpan$elm_html5_drag_drop$Html5$DragDrop$getDropId(dragDropHandle);
 				var positionMaybe = function () {
-					if (dropIdMaybe.$ === 'Nothing') {
+					var _n8 = _Utils_Tuple2(dragIdMaybe, dropIdMaybe);
+					if ((_n8.a.$ === 'Just') && (_n8.b.$ === 'Just')) {
+						var dragId = _n8.a.a;
+						var dropId = _n8.b.a;
+						return _Utils_eq(dropId, -1) ? norpan$elm_html5_drag_drop$Html5$DragDrop$getDroppablePosition(dragDropHandle) : elm$core$Maybe$Nothing;
+					} else {
 						return elm$core$Maybe$Nothing;
-					} else {
-						var dropId = dropIdMaybe.a;
-						return (!dropId) ? norpan$elm_html5_drag_drop$Html5$DragDrop$getDroppablePosition(dragDropHandle) : elm$core$Maybe$Nothing;
 					}
 				}();
-				var leftNew = function () {
-					if (positionMaybe.$ === 'Nothing') {
-						return leftOld;
-					} else {
-						var position = positionMaybe.a;
-						return A2(
-							author$project$ElmAutoStereogram$wordLeftClamp,
-							author$project$ElmAutoStereogram$testExtractWord(model),
-							elm$core$Basics$round((position.x / author$project$ElmAutoStereogram$fontWidth) - 4));
-					}
-				}();
-				var puzzleNew = (!_Utils_eq(leftNew, leftOld)) ? A4(
-					replaceWordPlacement,
-					author$project$ElmAutoStereogram$testRow,
-					author$project$ElmAutoStereogram$testColRank,
-					elm$core$Maybe$Just(leftNew),
-					elm$core$Maybe$Nothing) : modelRecord.puzzle;
-				var _n5 = (!_Utils_eq(leftOld, leftNew)) ? author$project$ElmAutoStereogram$puzzleRender(
-					_Utils_Tuple2(puzzleNew, modelRecord.randomSeed)) : _Utils_Tuple2(modelRecord.ascii, modelRecord.randomSeed);
-				var asciiNew = _n5.a;
-				var seed0 = _n5.b;
-				var x = A2(
-					elm$core$Debug$log,
-					'',
-					_Utils_Tuple3(dropIdMaybe, positionMaybe, resultMaybe1));
-				return _Utils_Tuple2(
-					author$project$ElmAutoStereogram$Model(
-						_Utils_update(
-							modelRecord,
-							{ascii: asciiNew, dragDropHandle: dragDropHandle, puzzle: puzzleNew, randomSeed: seed0})),
-					elm$core$Platform$Cmd$none);
+				var _n5 = _Utils_Tuple2(dragIdMaybe, wordPlacementMaybe);
+				if ((_n5.a.$ === 'Just') && (_n5.b.$ === 'Just')) {
+					var dragId = _n5.a.a;
+					var word = _n5.b.a.a.word;
+					var left = _n5.b.a.a.left;
+					var leftNew1 = function () {
+						if (positionMaybe.$ === 'Nothing') {
+							return left;
+						} else {
+							var position = positionMaybe.a;
+							return A2(
+								author$project$ElmAutoStereogram$wordLeftClamp,
+								word,
+								elm$core$Basics$round((position.x / author$project$ElmAutoStereogram$fontWidth) - 7));
+						}
+					}();
+					var leftNew2 = (_Utils_cmp(
+						elm$core$Basics$abs(leftNew1 - left),
+						author$project$ElmAutoStereogram$parallax) > 0) ? left : leftNew1;
+					var moved = !_Utils_eq(leftNew2, left);
+					var puzzleNew = moved ? A4(
+						replaceWordPlacement,
+						dragId,
+						author$project$ElmAutoStereogram$testColRank,
+						elm$core$Maybe$Just(leftNew2),
+						elm$core$Maybe$Nothing) : modelRecord.puzzle;
+					var _n6 = moved ? author$project$ElmAutoStereogram$puzzleRender(
+						_Utils_Tuple2(puzzleNew, modelRecord.randomSeed)) : _Utils_Tuple2(modelRecord.ascii, modelRecord.randomSeed);
+					var asciiNew = _n6.a;
+					var seed0 = _n6.b;
+					return _Utils_Tuple2(
+						author$project$ElmAutoStereogram$Model(
+							_Utils_update(
+								modelRecord,
+								{ascii: asciiNew, dragDropHandle: dragDropHandle, puzzle: puzzleNew, randomSeed: seed0})),
+						elm$core$Platform$Cmd$none);
+				} else {
+					return _Utils_Tuple2(model, elm$core$Platform$Cmd$none);
+				}
 			default:
 				return _Utils_Tuple2(model, elm$core$Platform$Cmd$none);
 		}
@@ -17269,39 +17260,74 @@ var norpan$elm_html5_drag_drop$Html5$DragDrop$droppable = F2(
 	});
 var author$project$ElmAutoStereogram$editPane = function (model) {
 	var modelRecord = model.a;
-	var rowIndex = author$project$ElmAutoStereogram$testRow;
-	var offsetY = mdgriffith$elm_ui$Element$moveDown(author$project$ElmAutoStereogram$editPaneDownOffset + (rowIndex * author$project$ElmAutoStereogram$fontSize));
-	var left = author$project$ElmAutoStereogram$testExtractLeft(model);
-	var offsetX = mdgriffith$elm_ui$Element$moveRight(author$project$ElmAutoStereogram$editPaneRightOffset + (left * author$project$ElmAutoStereogram$fontWidth));
-	var input = A2(
-		mdgriffith$elm_ui$Element$Input$text,
-		_Utils_ap(
-			_List_fromArray(
-				[
-					mdgriffith$elm_ui$Element$spacing(0),
-					mdgriffith$elm_ui$Element$height(
-					A2(mdgriffith$elm_ui$Element$maximum, author$project$ElmAutoStereogram$inputHeight, mdgriffith$elm_ui$Element$fill)),
-					mdgriffith$elm_ui$Element$width(
-					A2(
-						mdgriffith$elm_ui$Element$maximum,
-						elm$core$Basics$round((2 + author$project$ElmAutoStereogram$maxMessageLength) * author$project$ElmAutoStereogram$fontWidth),
-						mdgriffith$elm_ui$Element$fill)),
-					mdgriffith$elm_ui$Element$alpha(0.7),
-					offsetX,
-					offsetY
-				]),
-			_Utils_ap(
-				author$project$ElmAutoStereogram$selectEnable,
-				A2(
-					elm$core$List$map,
-					mdgriffith$elm_ui$Element$htmlAttribute,
-					A2(norpan$elm_html5_drag_drop$Html5$DragDrop$draggable, author$project$ElmAutoStereogram$DragDropMsg, 1)))),
-		{
-			label: A2(mdgriffith$elm_ui$Element$Input$labelLeft, _List_Nil, mdgriffith$elm_ui$Element$none),
-			onChange: A2(author$project$ElmAutoStereogram$WordSet, author$project$ElmAutoStereogram$testRow, author$project$ElmAutoStereogram$testColRank),
-			placeholder: elm$core$Maybe$Nothing,
-			text: author$project$ElmAutoStereogram$testExtractWord(model)
-		});
+	var _n0 = modelRecord.puzzle;
+	var puzzle = _n0.a;
+	var input = function (row) {
+		input:
+		while (true) {
+			var wordPlacementMaybe = A3(
+				author$project$ElmAutoStereogram$extractWordPlacement,
+				model,
+				elm$core$Maybe$Just(row),
+				author$project$ElmAutoStereogram$testColRank);
+			var _n1 = _Utils_Tuple2(
+				_Utils_cmp(
+					row,
+					elm$core$List$length(puzzle)) > 0,
+				wordPlacementMaybe);
+			if (_n1.a) {
+				return mdgriffith$elm_ui$Element$none;
+			} else {
+				if (_n1.b.$ === 'Nothing') {
+					var _n2 = _n1.b;
+					var $temp$row = row + 1;
+					row = $temp$row;
+					continue input;
+				} else {
+					var word = _n1.b.a.a.word;
+					var left = _n1.b.a.a.left;
+					var offsetY = mdgriffith$elm_ui$Element$moveDown(author$project$ElmAutoStereogram$editPaneDownOffset + (row * author$project$ElmAutoStereogram$fontSize));
+					var offsetX = mdgriffith$elm_ui$Element$moveRight(author$project$ElmAutoStereogram$editPaneRightOffset + (left * author$project$ElmAutoStereogram$fontWidth));
+					return A2(
+						mdgriffith$elm_ui$Element$Input$text,
+						_Utils_ap(
+							_List_fromArray(
+								[
+									mdgriffith$elm_ui$Element$spacing(0),
+									mdgriffith$elm_ui$Element$height(
+									A2(mdgriffith$elm_ui$Element$maximum, author$project$ElmAutoStereogram$inputHeight, mdgriffith$elm_ui$Element$fill)),
+									mdgriffith$elm_ui$Element$width(
+									A2(
+										mdgriffith$elm_ui$Element$maximum,
+										elm$core$Basics$round(((2 + author$project$ElmAutoStereogram$maxMessageLength) * author$project$ElmAutoStereogram$fontWidth) + 10),
+										mdgriffith$elm_ui$Element$fill)),
+									mdgriffith$elm_ui$Element$alpha(0.7),
+									offsetX,
+									offsetY,
+									mdgriffith$elm_ui$Element$inFront(
+									input(row + 1))
+								]),
+							_Utils_ap(
+								author$project$ElmAutoStereogram$selectEnable,
+								_Utils_ap(
+									A2(
+										elm$core$List$map,
+										mdgriffith$elm_ui$Element$htmlAttribute,
+										A2(norpan$elm_html5_drag_drop$Html5$DragDrop$draggable, author$project$ElmAutoStereogram$DragDropMsg, row)),
+									A2(
+										elm$core$List$map,
+										mdgriffith$elm_ui$Element$htmlAttribute,
+										A2(norpan$elm_html5_drag_drop$Html5$DragDrop$droppable, author$project$ElmAutoStereogram$DragDropMsg, row))))),
+						{
+							label: A2(mdgriffith$elm_ui$Element$Input$labelLeft, _List_Nil, mdgriffith$elm_ui$Element$none),
+							onChange: A2(author$project$ElmAutoStereogram$WordSet, row, author$project$ElmAutoStereogram$testColRank),
+							placeholder: elm$core$Maybe$Nothing,
+							text: word
+						});
+				}
+			}
+		}
+	};
 	var shade = _Utils_ap(
 		_List_fromArray(
 			[
@@ -17319,8 +17345,8 @@ var author$project$ElmAutoStereogram$editPane = function (model) {
 						A2(
 							elm$core$List$map,
 							mdgriffith$elm_ui$Element$htmlAttribute,
-							A2(norpan$elm_html5_drag_drop$Html5$DragDrop$droppable, author$project$ElmAutoStereogram$DragDropMsg, 0))),
-					input))
+							A2(norpan$elm_html5_drag_drop$Html5$DragDrop$droppable, author$project$ElmAutoStereogram$DragDropMsg, -1))),
+					input(0)))
 			]),
 		author$project$ElmAutoStereogram$selectDisable);
 	return A2(
@@ -17451,9 +17477,6 @@ var joakin$elm_canvas$Canvas$fillRect = F5(
 						elm$json$Json$Encode$float(h)
 					])));
 	});
-var elm$core$Basics$abs = function (n) {
-	return (n < 0) ? (-n) : n;
-};
 var elm$core$Basics$pi = _Basics_pi;
 var elm$core$Basics$degrees = function (angleInDegrees) {
 	return (angleInDegrees * elm$core$Basics$pi) / 180;

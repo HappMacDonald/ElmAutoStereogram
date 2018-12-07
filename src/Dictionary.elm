@@ -17,13 +17,35 @@ module Dictionary exposing
   , listGetOne
   , intBetweenInclusive
   , intClampMinMax
+  , maybeLazyDefault
   )
 import Array exposing (Array)
 import Maybe exposing (Maybe)
 import Random
 
+{- Gotta test:
+Dictionary.listGetOne
+  [("crumble","rumble"),("theater","heater"),("neither","either")]
+  Random.Seed 698505787 1013904223
+-}
+
 
 -- Arbitrary helper functions
+
+{-| a version of Maybe.withDefault that takes a lazy/unit function
+default instead of a constant: so that it's computation gets delayed until
+it actually gets called upon. Great for Debug.log calls. :)
+-}
+
+maybeLazyDefault : (() -> a) -> Maybe a -> a
+maybeLazyDefault defaultFunc subjectMaybe =
+  case subjectMaybe of
+    Just just ->
+      just
+
+    Nothing ->
+      defaultFunc ()
+
 
 {-|Tests whether or not an Integer lies between a start and an end point.
 -}
@@ -59,7 +81,8 @@ listGetOne list seed0 =
       decrement length
 
     (which, seed1) =
-      Random.step (Random.int 1 last) seed0
+      Random.step (Random.int 0 last) seed0
+      -- |>Debug.log ""
 
     result =
       listGetElement which list

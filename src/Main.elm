@@ -13,7 +13,11 @@ Todo:
 * HiDPI testing from Tolana, and no Kukkutarma
 
 Joachim said:
-> For now, you can work around it, which is great, but involves some setup work. You can pass the devicePixelRatio as a Flag to the program, and then set the style width and height to the size you want and the attributes width and height to those dimensions multiplied by the pixel ratio. Something like
+> For now, you can work around it, which is great, but involves some setup work.
+> You can pass the devicePixelRatio as a Flag to the program,
+> and then set the style width and height to the size you want and the attributes
+> width and height to those dimensions multiplied by the pixel ratio.
+> Something like
 > 
 >     [ width (w * pixelRatio)
 >     , height (h * pixelRatio)
@@ -334,126 +338,145 @@ puzzleRender (Puzzle puzzle, seed0) =
   in
     puzzle
     |>List.foldr
-        (\puzzleRow ( accumulator, seedA0 ) ->
-          let
-            wordPresentMaybe : Maybe WordPlacement
-            wordPresentMaybe =
-              case puzzleRow of
-                [] ->
-                  Nothing
+      (\puzzleRow ( accumulator, seedA0 ) ->
+        let
+          wordPresentMaybe : Maybe WordPlacement
+          wordPresentMaybe =
+            case puzzleRow of
+              [] ->
+                Nothing
 
-                ( WordPlacement {word} as wordPlacement ) :: _ ->
-                  if word==""
-                  then Nothing
-                  else Just wordPlacement
+              ( WordPlacement {word} as wordPlacement ) :: _ ->
+                if word==""
+                then Nothing
+                else Just wordPlacement
 
-            ( outputRowGenerator, seedB1 ) =
-              case wordPresentMaybe of
-                Nothing ->
-                  let
-                    (pattern, seedA1) =
-                      parallaxFill ("", seedA0)
+          ( outputRowGenerator, seedB1 ) =
+            case wordPresentMaybe of
+              Nothing ->
+                let
+                  (pattern, seedA1) =
+                    parallaxFill ("", seedA0)
 
-                    (offset, seedA2) =
-                      Random.step (Random.int 0 (parallax-spaceWidth) ) seedA1
-                    -- x = Debug.log "passive" { sum = String.length pattern }
-                  in
-                    -- we're only using one non-changing pattern here,
-                    -- as there is no word to encode on this line.
-                    ( { offset = offset
-                      , leftPattern = pattern
-                      , rightPattern = pattern
-                      , changeOver = 0
-                      }
-                    , seedA2
-                    )
-
-                Just ( WordPlacement {word, left} ) ->
-                  let
-                    wordLength =
-                      String.length word
-
-                    { leftLength
-                      , rightLength
-                      , leftWordPairs
-                      , rightWordPairs
-                      , seedA1
-                      } =
-                      calcLeftRightLength leftPairs rightPairs wordLength seedA0
-
-                    ((leftWord0, leftWord1), seedA2) =
-                      Dictionary.listGetOne leftWordPairs seedA1
-                      |>Tuple.mapFirst
-                          (Maybe.withDefault ("logicError", "logicError"))
-
-                    ((rightWord0, rightWord1), seedA3) =
-                      Dictionary.listGetOne rightWordPairs seedA2
-                      |>Tuple.mapFirst
-                          (Maybe.withDefault ("logicError", "logicError"))
-
-                    leftPattern =
-                      ( leftWord0 ++ " "
-                      ++word ++ " "
-                      ++rightWord0 ++ " "
-                      )
-
-                    rightPattern =
-                      ( leftWord1 ++ " "
-                      ++word ++ " "
-                      ++rightWord1 ++ " "
-                      )
-
-                    -- x = Debug.log "active"
-                    --     { sumLeft = String.length leftPattern
-                    --     , sumRight = String.length rightPattern
-                    --     }
-
-                  in
-                    ( { offset =
-                          leftLength
-                          - ( modBy parallax left )
-                          + parallax
-                          + spaceWidth
-                      , leftPattern = leftPattern
-                      , rightPattern = rightPattern
-                      , changeOver = left - leftLength
-                      }
-                    , seedA3
-                    )
-                    -- |>Debug.log ""
-
-
-            outputRow : String
-            outputRow =
-              List.range 0 outputColumns
-              |>List.map
-                  (\columnNumber ->
-                    let
-                      pattern =
-                        if columnNumber < outputRowGenerator.changeOver
-                        then outputRowGenerator.rightPattern
-                        else outputRowGenerator.leftPattern
-                        -- |>Debug.log "pattern"
-
-                      position =
-                        columnNumber + outputRowGenerator.offset
-                        |>modBy parallax
-
-                    in
-                      pattern
-                      |>String.dropLeft
-                          position
-                      |>String.uncons
-                      |>Maybe.withDefault (' ', "")
-                      |>Tuple.first
-
+                  (offset, seedA2) =
+                    Random.step (Random.int 0 (parallax-spaceWidth) ) seedA1
+                  -- x = Debug.log "passive" { sum = String.length pattern }
+                in
+                  -- we're only using one non-changing pattern here,
+                  -- as there is no word to encode on this line.
+                  ( { offset = offset
+                    , leftPattern = pattern
+                    , rightPattern = pattern
+                    , changeOver = 0
+                    }
+                  , seedA2
                   )
-              |>String.fromList
 
-          in
-            ( outputRow :: accumulator, seedB1 )
-        )
-        ( [], seed0 )
+              Just ( WordPlacement {word, left} ) ->
+                let
+                  wordLength =
+                    String.length word
+
+                  {   leftLength
+                    , rightLength
+                    , leftWordPairs
+                    , rightWordPairs
+                    , seedA1
+                    } =
+                    calcLeftRightLength leftPairs rightPairs wordLength seedA0
+
+                  ((leftWord0, leftWord1), seedA2) =
+                    Dictionary.listGetOne leftWordPairs seedA1
+                    |>Tuple.mapFirst
+                      ( Dictionary.maybeLazyDefault
+                        (\() ->
+                          ( 
+                            -- Debug.log
+                            -- ( Debug.toString ( "A", leftWordPairs, seedA1 ) )
+                            "logicError"
+                          , "logicError"
+                          )
+                        )
+                      )
+
+                  ((rightWord0, rightWord1), seedA3) =
+                    Dictionary.listGetOne rightWordPairs seedA2
+                    -- |>Debug.log "Nothing?"
+                    |>Tuple.mapFirst
+                      ( Dictionary.maybeLazyDefault
+                        (\() ->
+                          ( 
+                            -- Debug.log
+                            -- ( Debug.toString ( "B", rightWordPairs, seedA2 ) )
+                            "logicError"
+                          , "logicError"
+                          )
+                        )
+                      )
+
+                  leftPattern =
+                    ( leftWord0 ++ " "
+                    ++word ++ " "
+                    ++rightWord0 ++ " "
+                    )
+
+                  rightPattern =
+                    ( leftWord1 ++ " "
+                    ++word ++ " "
+                    ++rightWord1 ++ " "
+                    )
+
+                  -- x = Debug.log "active"
+                  --     { sumLeft = String.length leftPattern
+                  --     , sumRight = String.length rightPattern
+                  --     }
+
+                in
+                  ( { offset =
+                        leftLength
+                        - ( modBy parallax left )
+                        + parallax
+                        + spaceWidth
+                    , leftPattern = leftPattern
+                    , rightPattern = rightPattern
+                    , changeOver = left - leftLength
+                    }
+                  , seedA3
+                  )
+                  -- |>Debug.log ""
+
+
+          outputRow : String
+          outputRow =
+            List.range 0 outputColumns
+            |>List.map
+                (\columnNumber ->
+                  let
+                    pattern =
+                      if columnNumber < outputRowGenerator.changeOver
+                      then outputRowGenerator.rightPattern
+                      else outputRowGenerator.leftPattern
+                      -- |>Debug.log "pattern"
+
+                    position =
+                      columnNumber + outputRowGenerator.offset
+                      |>modBy parallax
+
+                  in
+                    pattern
+                    |>String.dropLeft
+                        position
+                    |>String.uncons
+                    |>Maybe.withDefault (' ', "")
+                    |>Tuple.first
+
+                )
+            |>String.fromList
+
+        in
+          ( outputRow :: accumulator, seedB1 )
+      )
+      ( [], seed0 )
 
 -- MODEL
 
@@ -502,42 +525,15 @@ initialPuzzle =
   , [ WordPlacement
       { word = "life", left = 63}
     ]
-  , [ WordPlacement
-      { word = "life", left = 63}
-    ]
-  , [ WordPlacement
-      { word = "life", left = 63}
-    ]
-  , [ WordPlacement
-      { word = "life", left = 63}
-    ]
-  , [ WordPlacement
-      { word = "life", left = 63}
-    ]
-  , [ WordPlacement
-      { word = "life", left = 63}
-    ]
-  , [ WordPlacement
-      { word = "life", left = 63}
-    ]
-  , [ WordPlacement
-      { word = "life", left = 63}
-    ]
-  , [ WordPlacement
-      { word = "life", left = 63}
-    ]
-  , [ WordPlacement
-      { word = "life", left = 63}
-    ]
-  -- , []
-  -- , []
-  -- , []
-  -- , []
-  -- , []
-  -- , []
-  -- , []
-  -- , []
-  -- , []
+  , []
+  , []
+  , []
+  , []
+  , []
+  , []
+  , []
+  , []
+  , []
   ]
 
 
@@ -818,7 +814,7 @@ update msg ((Model modelRecord) as model) =
         leftNew =
           case leftMaybe of
             Nothing ->
-              leftOld
+              wordLeftClamp wordNew leftOld
 
             Just left ->
               wordLeftClamp wordNew left
@@ -895,76 +891,83 @@ update msg ((Model modelRecord) as model) =
             Html5.DragDrop.update dragDropMsg modelRecord.dragDropHandle
             -- |>Debug.log "dragdrop"
 
-          -- (dropId, positionMaybe) =
-          --   ( case resultMaybe1 of
-          --       Just (_, dropId_, position) ->
-          --         -- let
-          --         --   x=Debug.log ( "dropId=" ++ ( String.fromInt dropId ) )
-          --         -- in
-          --         -- if dropId==0
-          --         -- then Just position |> Debug.log "accepted"
-          --         -- else Nothing |> Debug.log "rejected"
-          --         (dropId_, Just position)
-
-          --       _ ->
-          --         (-1, Nothing)
-          --         -- Html5.DragDrop.getDroppablePosition dragDropHandle
-          --   )            
-          --   |>Debug.log "final position is: "
+          dragIdMaybe =
+            Html5.DragDrop.getDragId dragDropHandle
 
           dropIdMaybe =
             Html5.DragDrop.getDropId dragDropHandle
 
           positionMaybe =
-            case dropIdMaybe of
-              Nothing ->
-                Nothing
-
-              Just dropId ->
-                if dropId==0
+            case (dragIdMaybe, dropIdMaybe) of
+              ( Just dragId, Just dropId ) ->
+                if dropId == -1
                 then Html5.DragDrop.getDroppablePosition dragDropHandle
                 else Nothing
 
-          x = Debug.log "" (dropIdMaybe, positionMaybe, resultMaybe1)
+              _ ->
+                Nothing
 
-          leftOld =
-            testExtractLeft model
+          -- x = Debug.log "" (dropIdMaybe, positionMaybe, resultMaybe1)
 
-          leftNew =
-            case positionMaybe of
-              Nothing ->
-                leftOld
-              
-              Just position ->
-                round
-                  ( ( toFloat position.x ) / fontWidth - 4 )
-                |>wordLeftClamp ( testExtractWord model )
-
-          -- x =
-          --   if leftNew<1
-          --   then Debug.log "zero?" "]"--(dragDropHandle, resultMaybe1)
-          --   else ""--(dragDropHandle, resultMaybe1)
-
-          puzzleNew =
-            if leftNew /= leftOld
-            then replaceWordPlacement testRow testColRank (Just leftNew) Nothing
-            else modelRecord.puzzle
-
-          (asciiNew, seed0) =
-            if leftOld /= leftNew
-            then puzzleRender (puzzleNew, modelRecord.randomSeed)
-            else (modelRecord.ascii, modelRecord.randomSeed)
+          wordPlacementMaybe =
+            extractWordPlacement model dragIdMaybe testColRank
 
         in
-          ( Model
-            { modelRecord
-            | dragDropHandle = dragDropHandle
-            , puzzle = puzzleNew
-            , ascii = asciiNew
-            , randomSeed = seed0
-            }
-          , Cmd.none
-          )
+          case ( dragIdMaybe, wordPlacementMaybe ) of
+            ( Just dragId, Just ( WordPlacement {word, left} ) )->
+              let
+                leftNew1 =
+                  case positionMaybe of
+                    Nothing ->
+                      left
+                    
+                    Just position ->
+                      round
+                        ( ( toFloat position.x ) / fontWidth - 7 )
+                      |>wordLeftClamp word
+
+                leftNew2 =
+                  if (abs (leftNew1-left)) > parallax
+                  then left
+                  else leftNew1
+
+                -- x =
+                --   if leftNew<1
+                --   then Debug.log "zero?" "]"--(dragDropHandle, resultMaybe1)
+                --   else ""--(dragDropHandle, resultMaybe1)
+
+                moved =
+                  leftNew2 /= left
+
+                puzzleNew =
+                  if moved
+                  then
+                    replaceWordPlacement
+                      dragId
+                      testColRank
+                      ( Just leftNew2 )
+                      Nothing
+                  else modelRecord.puzzle
+
+                (asciiNew, seed0) =
+                  if moved
+                  then puzzleRender (puzzleNew, modelRecord.randomSeed)
+                  else (modelRecord.ascii, modelRecord.randomSeed)
+
+              in
+                ( Model
+                  { modelRecord
+                  | dragDropHandle = dragDropHandle
+                  , puzzle = puzzleNew
+                  , ascii = asciiNew
+                  , randomSeed = seed0
+                  }
+                , Cmd.none
+                )
+
+            _ ->
+              ( model, Cmd.none )
+
 
 
       Noop ->
@@ -1234,88 +1237,75 @@ imagePane ( (Model modelRecord) as model ) =
 
 
 editPane : Model -> List ( Element Msg )
-editPane ( (Model modelRecord) as model ) =
+editPane ( ( Model modelRecord ) as model ) =
   let
-    left =
-      testExtractLeft model
+    ( Puzzle puzzle ) =
+      modelRecord.puzzle
 
-    rowIndex = 
-      testRow
+    input : Int -> Element Msg
+    input row =
+      let
+        wordPlacementMaybe =
+          extractWordPlacement model ( Just row ) testColRank
 
-    offsetX =
-      ( toFloat editPaneRightOffset )
-      + (toFloat left)
-      * fontWidth
-      -- |>Debug.log "moveRight"
-      |>Element.moveRight 
-      
-    offsetY =
-      editPaneDownOffset + ( rowIndex * fontSize )
-      |>toFloat
-      |>Element.moveDown
+      in
+        case (row > ( List.length puzzle ), wordPlacementMaybe ) of
+          ( True, _ ) ->
+            Element.none -- End of recursion, bottom out
 
+          ( False, Nothing ) ->
+            input (row + 1) -- return no data for this level, just forward next.
 
-    -- gripperElement : Element Msg
-    -- gripperElement =
-    --   Element.el
-    --     [ Element.width Element.fill
-    --     , Element.height Element.fill
-    --     , Background.color ( uiRGB editBoxBorderColor )
-    --     , offsetX
-    --     , offsetY
-    --     ]
-    --     <|Element.el
-    --         [ Font.center
-    --         , Element.centerX
-    --         , Element.centerY
-    --         ]
-    --         <|Element.text "|||"
-
-    input : Element Msg
-    input =
-      Input.text
-        ( [ Element.spacing 0
-          , Element.height
-            <|Element.maximum inputHeight Element.fill
-          , Element.width
-            <|Element.maximum
-              ( ( toFloat ( 2 + maxMessageLength ) )
+          ( False, Just ( WordPlacement {word, left} ) ) ->
+            let
+              offsetX =
+                ( toFloat editPaneRightOffset )
+                + (toFloat left)
                 * fontWidth
-                |>round
-              )
-              Element.fill
-          , Element.alpha 0.7
-          , offsetX
-          , offsetY
-          -- , Element.inFront
-          --   <|Element.el
-          --     ( [ Background.color <| Element.rgba 0 1 0 0.3
-          --       , Element.width Element.fill
-          --       , Element.height <|Element.minimum 200 Element.fill
-          --       ]
-          --     ++( List.map
-          --         Element.htmlAttribute
-          --         <|Html5.DragDrop.droppable DragDropMsg 1
-          --       )
-          --     )
-          --     Element.none
-          ]
-        ++selectEnable
-        ++( List.map
-            Element.htmlAttribute
-            <|Html5.DragDrop.draggable DragDropMsg 1
-          )
-        -- ++( List.map
-        --     Element.htmlAttribute
-        --     <|Html5.DragDrop.droppable DragDropMsg 1
-        --   )
-        )
-        { onChange = WordSet testRow testColRank
-        , text = testExtractWord model
-        , placeholder = Nothing
-        -- , label = Input.labelLeft [] gripperElement
-        , label = Input.labelLeft [] Element.none
-        }
+                -- |>Debug.log "moveRight"
+                |>Element.moveRight 
+                
+              offsetY =
+                editPaneDownOffset + ( row * fontSize )
+                |>toFloat
+                |>Element.moveDown
+
+            in
+              Input.text
+                ( [ Element.spacing 0
+                  , Element.height
+                    <|Element.maximum inputHeight Element.fill
+                  , Element.width
+                    <|Element.maximum
+                      ( ( toFloat ( 2 + maxMessageLength ) )
+                        * fontWidth
+                        + 10
+                        |>round
+                      )
+                      Element.fill
+                  , Element.alpha 0.7
+                  , offsetX
+                  , offsetY
+                  , row + 1
+                    |>input
+                    |>Element.inFront
+                  ]
+                ++selectEnable
+                ++( List.map
+                    Element.htmlAttribute
+                    <|Html5.DragDrop.draggable DragDropMsg row
+                  )
+                ++( List.map
+                    Element.htmlAttribute
+                    <|Html5.DragDrop.droppable DragDropMsg row
+                  )
+                )
+                { onChange = WordSet row testColRank
+                , text = word
+                , placeholder = Nothing
+                -- , label = Input.labelLeft [] gripperElement
+                , label = Input.labelLeft [] Element.none
+                }
 
     shade : List ( Element.Attribute Msg )
     shade =
@@ -1333,10 +1323,10 @@ editPane ( (Model modelRecord) as model ) =
             ]
           ++( List.map
               Element.htmlAttribute
-              <|Html5.DragDrop.droppable DragDropMsg 0
+              <|Html5.DragDrop.droppable DragDropMsg -1
             )
           )
-          input
+          <|input 0
         )
       ]
       ++selectDisable
@@ -1448,33 +1438,25 @@ testColRank =
   0
 
 
-testExtractWord : Model -> String
-testExtractWord ( ( Model modelRecord) as model ) =
-  case modelRecord.puzzle of
-    Puzzle puzzle ->
-      case Dictionary.listGetElement testRow puzzle of
-        Nothing ->
-          ";P"
+extractWordPlacement : Model -> Maybe Int -> Int -> Maybe WordPlacement
+extractWordPlacement ( ( Model modelRecord ) as model ) maybeRow colRank =
+  let
+    ( Puzzle puzzle ) =
+      modelRecord.puzzle
+  in
+    case maybeRow of
+      Nothing ->
+        Nothing
 
-        Just [] ->
-          ";P"
+      Just row ->
+        case Dictionary.listGetElement row puzzle of
+          Nothing ->
+            Nothing
 
-        Just (WordPlacement wordPlacement :: _) ->
-          wordPlacement.word
+          Just [] ->
+            Nothing
 
-
-testExtractLeft : Model -> Int
-testExtractLeft ( ( Model modelRecord) as model ) =
-  case modelRecord.puzzle of
-    Puzzle puzzle ->
-      case Dictionary.listGetElement testRow puzzle of
-        Nothing ->
-          -10
-
-        Just [] ->
-          -10
-
-        Just (WordPlacement wordPlacement :: _) ->
-          wordPlacement.left
+          Just (wordPlacement :: _) ->
+            Just wordPlacement
 
 
