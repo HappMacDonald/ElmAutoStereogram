@@ -5,8 +5,8 @@ module ElmAutoStereogram exposing (main)
 Bugs:
 * OK, grabber is working 99% well
 ** Main problem just now is it "flashes" to the left margin
-** Presumably because spurious zero X values are getting calculated
-** I should probably try elm-live debug mode to catch that, hmm..
+** This happens when code gets position relative to input instead of background
+** having a hard time definitively telling which thing I'm dragging over. :P
 
 
 Todo:
@@ -96,11 +96,6 @@ type TabType
   | TabImage
 
 
--- (outputRows, outputColumns) : (Int, Int)
--- (outputRows, outputColumns) =
---   (23, 79)
-
-
 outputRows : Int
 outputRows =
   23
@@ -181,7 +176,7 @@ markdownCodeIndent =
 
 editPaneRightOffset : Int
 editPaneRightOffset =
-  7
+  43
 
 
 editPaneDownOffset : Int
@@ -775,6 +770,15 @@ tabChange ((Model modelRecord) as model) url =
     )
 
 
+wordLeftClamp : String -> Int -> Int
+wordLeftClamp word left =
+  Dictionary.intClampMinMax
+    0
+    ( outputColumns - ( String.length word ) + 1 )
+    left
+
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg ((Model modelRecord) as model) =
   let
@@ -817,7 +821,7 @@ update msg ((Model modelRecord) as model) =
               leftOld
 
             Just left ->
-              Dictionary.intClampMinMax 0 outputColumns left
+              wordLeftClamp wordNew left
 
         wordPlacementNew =
           WordPlacement { word = wordNew, left = leftNew }
@@ -891,14 +895,37 @@ update msg ((Model modelRecord) as model) =
             Html5.DragDrop.update dragDropMsg modelRecord.dragDropHandle
             -- |>Debug.log "dragdrop"
 
-          positionMaybe =
-            case resultMaybe1 of
-              Just (_, _, position) ->
-                Just position
+          -- (dropId, positionMaybe) =
+          --   ( case resultMaybe1 of
+          --       Just (_, dropId_, position) ->
+          --         -- let
+          --         --   x=Debug.log ( "dropId=" ++ ( String.fromInt dropId ) )
+          --         -- in
+          --         -- if dropId==0
+          --         -- then Just position |> Debug.log "accepted"
+          --         -- else Nothing |> Debug.log "rejected"
+          --         (dropId_, Just position)
 
-              _ ->
-                Html5.DragDrop.getDroppablePosition dragDropHandle
-                |>Debug.log "["
+          --       _ ->
+          --         (-1, Nothing)
+          --         -- Html5.DragDrop.getDroppablePosition dragDropHandle
+          --   )            
+          --   |>Debug.log "final position is: "
+
+          dropIdMaybe =
+            Html5.DragDrop.getDropId dragDropHandle
+
+          positionMaybe =
+            case dropIdMaybe of
+              Nothing ->
+                Nothing
+
+              Just dropId ->
+                if dropId==0
+                then Html5.DragDrop.getDroppablePosition dragDropHandle
+                else Nothing
+
+          x = Debug.log "" (dropIdMaybe, positionMaybe, resultMaybe1)
 
           leftOld =
             testExtractLeft model
@@ -911,7 +938,7 @@ update msg ((Model modelRecord) as model) =
               Just position ->
                 round
                   ( ( toFloat position.x ) / fontWidth - 4 )
-                |>Dictionary.intClampMinMax 0 79
+                |>wordLeftClamp ( testExtractWord model )
 
           -- x =
           --   if leftNew<1
@@ -1228,26 +1255,21 @@ editPane ( (Model modelRecord) as model ) =
       |>Element.moveDown
 
 
-    gripperElement : Element Msg
-    gripperElement =
-      Element.el
-        ( [ Element.width Element.fill
-          , Element.height Element.fill
-          , Background.color ( uiRGB editBoxBorderColor )
-          , offsetX
-          , offsetY
-          ]
-        ++( List.map
-            Element.htmlAttribute
-            <|Html5.DragDrop.draggable DragDropMsg 1
-          )
-        )
-        <|Element.el
-            [ Font.center
-            , Element.centerX
-            , Element.centerY
-            ]
-            <|Element.text "|||"
+    -- gripperElement : Element Msg
+    -- gripperElement =
+    --   Element.el
+    --     [ Element.width Element.fill
+    --     , Element.height Element.fill
+    --     , Background.color ( uiRGB editBoxBorderColor )
+    --     , offsetX
+    --     , offsetY
+    --     ]
+    --     <|Element.el
+    --         [ Font.center
+    --         , Element.centerX
+    --         , Element.centerY
+    --         ]
+    --         <|Element.text "|||"
 
     input : Element Msg
     input =
@@ -1265,13 +1287,34 @@ editPane ( (Model modelRecord) as model ) =
           , Element.alpha 0.7
           , offsetX
           , offsetY
+          -- , Element.inFront
+          --   <|Element.el
+          --     ( [ Background.color <| Element.rgba 0 1 0 0.3
+          --       , Element.width Element.fill
+          --       , Element.height <|Element.minimum 200 Element.fill
+          --       ]
+          --     ++( List.map
+          --         Element.htmlAttribute
+          --         <|Html5.DragDrop.droppable DragDropMsg 1
+          --       )
+          --     )
+          --     Element.none
           ]
         ++selectEnable
+        ++( List.map
+            Element.htmlAttribute
+            <|Html5.DragDrop.draggable DragDropMsg 1
+          )
+        -- ++( List.map
+        --     Element.htmlAttribute
+        --     <|Html5.DragDrop.droppable DragDropMsg 1
+        --   )
         )
         { onChange = WordSet testRow testColRank
         , text = testExtractWord model
         , placeholder = Nothing
-        , label = Input.labelLeft [] gripperElement
+        -- , label = Input.labelLeft [] gripperElement
+        , label = Input.labelLeft [] Element.none
         }
 
     shade : List ( Element.Attribute Msg )
@@ -1290,7 +1333,7 @@ editPane ( (Model modelRecord) as model ) =
             ]
           ++( List.map
               Element.htmlAttribute
-              <|Html5.DragDrop.droppable DragDropMsg 1
+              <|Html5.DragDrop.droppable DragDropMsg 0
             )
           )
           input
