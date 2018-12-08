@@ -104,6 +104,28 @@ type TabType
     | TabImage
 
 
+defaultParallax : Int
+defaultParallax =
+    15
+
+
+minParallax : Puzzle -> Int
+minParallax puzzle =
+    puzzleWordsMaxLength puzzle
+        + 6
+        |> Debug.log "minParallax"
+
+
+maxParallax : Int
+maxParallax =
+    23
+
+
+
+-- I'unno man, it seems to hang with any longer parallax
+--, and I'm too lazy to figure out why.
+
+
 outputRows : Int
 outputRows =
     23
@@ -112,14 +134,6 @@ outputRows =
 outputColumns : Int
 outputColumns =
     79
-
-
-{-| How many characters a background-layer pattern repeats
-Eventually I'll make this configurable
--}
-parallax : Int
-parallax =
-    15
 
 
 {-| canvasOverSample forces Canvas image to render that many times larger
@@ -216,8 +230,8 @@ Hardcoded to be 6 less than parallax for now.
 I forgot where "6" came from, mor experimentation may be called for
 to find out it's origins. :P
 -}
-maxMessageLength : Int
-maxMessageLength =
+maxMessageLength : Int -> Int
+maxMessageLength parallax =
     parallax - 6
 
 
@@ -232,8 +246,14 @@ type Puzzle
     = Puzzle (List (List WordPlacement))
 
 
+type Validity
+    = Valid
+    | Invalid
+
+
 calcLeftRightLength :
-    List PairList
+    Int
+    -> List PairList
     -> List PairList
     -> Int
     -> Random.Seed
@@ -244,13 +264,13 @@ calcLeftRightLength :
         , rightWordPairs : PairList
         , seedA1 : Random.Seed
         }
-calcLeftRightLength leftPairs rightPairs wordLength seedC0 =
+calcLeftRightLength parallax leftPairs rightPairs wordLength seedC0 =
     let
         ( leftLength, seedC1 ) =
             Random.step
                 (Random.int
                     Dictionary.shortestWord
-                    (maxMessageLength
+                    (maxMessageLength parallax
                         - wordLength
                         + Dictionary.shortestWord
                     )
@@ -258,7 +278,7 @@ calcLeftRightLength leftPairs rightPairs wordLength seedC0 =
                 seedC0
 
         rightLength =
-            maxMessageLength - wordLength - leftLength + 2
+            maxMessageLength parallax - wordLength - leftLength + 2
 
         -- yeah.. magic number "2" here disappoints me.
         -- will need to research more what it's
@@ -275,11 +295,11 @@ calcLeftRightLength leftPairs rightPairs wordLength seedC0 =
     of
         Nothing ->
             -- try again, new random seed
-            calcLeftRightLength leftPairs rightPairs wordLength seedC1
+            calcLeftRightLength parallax leftPairs rightPairs wordLength seedC1
 
         Just [] ->
             -- try again, new random seed
-            calcLeftRightLength leftPairs rightPairs wordLength seedC1
+            calcLeftRightLength parallax leftPairs rightPairs wordLength seedC1
 
         Just leftWordPairs ->
             case
@@ -289,11 +309,11 @@ calcLeftRightLength leftPairs rightPairs wordLength seedC0 =
             of
                 Nothing ->
                     -- try again, new random seed
-                    calcLeftRightLength leftPairs rightPairs wordLength seedC1
+                    calcLeftRightLength parallax leftPairs rightPairs wordLength seedC1
 
                 Just [] ->
                     -- try again, new random seed
-                    calcLeftRightLength leftPairs rightPairs wordLength seedC1
+                    calcLeftRightLength parallax leftPairs rightPairs wordLength seedC1
 
                 Just rightWordPairs ->
                     { leftLength = leftLength
@@ -308,8 +328,8 @@ calcLeftRightLength leftPairs rightPairs wordLength seedC0 =
 -- |>Debug.log ""
 
 
-parallaxFill : ( String, Random.Seed ) -> ( String, Random.Seed )
-parallaxFill ( stringSoFar, seed0 ) =
+parallaxFill : Int -> ( String, Random.Seed ) -> ( String, Random.Seed )
+parallaxFill parallax ( stringSoFar, seed0 ) =
     let
         remainingSize =
             parallax - String.length stringSoFar
@@ -321,13 +341,13 @@ parallaxFill ( stringSoFar, seed0 ) =
         (chunkSize < remainingSize - spaceWidth)
             && (chunkSize > remainingSize - 2 * spaceWidth - breathingRoom)
     then
-        parallaxFill ( stringSoFar, seed1 )
+        parallaxFill parallax ( stringSoFar, seed1 )
         -- try again, new random seed
 
     else
         case Dictionary.getOneByLength ( chunkSize, seed1 ) of
             Nothing ->
-                parallaxFill ( stringSoFar, seed1 )
+                parallaxFill parallax ( stringSoFar, seed1 )
 
             -- try again, new random seed
             Just ( word, seed2 ) ->
@@ -339,14 +359,18 @@ parallaxFill ( stringSoFar, seed0 ) =
                     ( newStringSoFar, seed2 )
 
                 else
-                    parallaxFill ( newStringSoFar, seed2 )
+                    parallaxFill parallax ( newStringSoFar, seed2 )
 
 
 puzzleRender :
-    ( Puzzle, Random.Seed )
+    Int
+    -> ( Puzzle, Random.Seed )
     -> ( List String, Random.Seed )
-puzzleRender ( Puzzle puzzle, seed0 ) =
+puzzleRender parallax ( Puzzle puzzle, seed0 ) =
     let
+        _ =
+            Debug.log "parallax" parallax
+
         ( leftPairs, rightPairs ) =
             -- Debug.log "leftAndRightPairs"
             leftAndRightPairs
@@ -380,7 +404,7 @@ puzzleRender ( Puzzle puzzle, seed0 ) =
                             Nothing ->
                                 let
                                     ( pattern, seedA1 ) =
-                                        parallaxFill ( "", seedA0 )
+                                        parallaxFill parallax ( "", seedA0 )
 
                                     ( offset, seedA2 ) =
                                         Random.step
@@ -409,6 +433,7 @@ puzzleRender ( Puzzle puzzle, seed0 ) =
 
                                     { leftLength, rightLength, leftWordPairs, rightWordPairs, seedA1 } =
                                         calcLeftRightLength
+                                            parallax
                                             leftPairs
                                             rightPairs
                                             wordLength
@@ -523,6 +548,7 @@ type Model
         , tab : TabType
         , ascii : List String
         , puzzle : Puzzle
+        , parallax : Int
         , randomSeed : Random.Seed
         , dragDropHandle : Html5.DragDrop.Model DragId DropId
 
@@ -749,6 +775,21 @@ extractWordPlacement ((Model modelRecord) as model) maybeRow colRank =
                     Just wordPlacement
 
 
+puzzleWordsMaxLength : Puzzle -> Int
+puzzleWordsMaxLength (Puzzle puzzle) =
+    List.foldr
+        (\row accumulator1 ->
+            List.foldr
+                (\(WordPlacement { word }) accumulator2 ->
+                    max (String.length word) accumulator2
+                )
+                accumulator1
+                row
+        )
+        0
+        puzzle
+
+
 init : Decode.Value -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url navKey =
     let
@@ -758,7 +799,7 @@ init flags url navKey =
 
         ( ascii, seed1 ) =
             -- ( List.repeat outputRows (String.repeat outputColumns "2"), seed0 )
-            puzzleRender ( initialPuzzle, seed0 )
+            puzzleRender defaultParallax ( initialPuzzle, seed0 )
     in
     tabChange
         (Model
@@ -767,6 +808,7 @@ init flags url navKey =
             , randomSeed = seed1
             , tab = TabEdit
             , puzzle = initialPuzzle
+            , parallax = defaultParallax
             , ascii = ascii
             , dragDropHandle = Html5.DragDrop.init
             }
@@ -792,6 +834,7 @@ type Msg
     | WordSet Int Int String -- row, colRank, word
     | LeftSet Int Int Int -- row, colRank, left
     | DragDropMsg (Html5.DragDrop.Msg DragId DropId)
+    | ParallaxChange Float
     | Noop
 
 
@@ -829,10 +872,10 @@ tabChange ((Model modelRecord) as model) url =
     )
 
 
-wordLeftClamp : String -> Int -> Int
-wordLeftClamp word left =
+wordLeftClamp : Int -> String -> Int -> Int
+wordLeftClamp parallax word left =
     Dictionary.intClampMinMax
-        0
+        parallax
         (outputColumns - String.length word + 1)
         left
 
@@ -840,6 +883,9 @@ wordLeftClamp word left =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg ((Model modelRecord) as model) =
     let
+        parallax =
+            modelRecord.parallax
+
         -- x=Debug.log "update msg=" msg
         replaceWordPlacement : Int -> Int -> Maybe Int -> Maybe String -> Puzzle
         replaceWordPlacement row colRank leftMaybe wordMaybe =
@@ -870,7 +916,7 @@ update msg ((Model modelRecord) as model) =
                             wordOld
 
                         Just word ->
-                            if String.length word <= maxMessageLength then
+                            if String.length word <= maxMessageLength parallax then
                                 word
 
                             else
@@ -879,10 +925,10 @@ update msg ((Model modelRecord) as model) =
                 leftNew =
                     case leftMaybe of
                         Nothing ->
-                            wordLeftClamp wordNew leftOld
+                            wordLeftClamp parallax wordNew leftOld
 
                         Just left ->
-                            wordLeftClamp wordNew left
+                            wordLeftClamp parallax wordNew left
 
                 wordPlacementNew =
                     WordPlacement { word = wordNew, left = leftNew }
@@ -917,7 +963,7 @@ update msg ((Model modelRecord) as model) =
 
                 ( ascii, seed0 ) =
                     -- ( List.repeat outputRows (String.repeat outputColumns "2"), seed0 )
-                    puzzleRender ( puzzleNew, modelRecord.randomSeed )
+                    puzzleRender parallax ( puzzleNew, modelRecord.randomSeed )
             in
             ( Model
                 { modelRecord
@@ -935,7 +981,7 @@ update msg ((Model modelRecord) as model) =
 
                 ( ascii, seed0 ) =
                     -- ( List.repeat outputRows (String.repeat outputColumns "2"), seed0 )
-                    puzzleRender ( puzzleNew, modelRecord.randomSeed )
+                    puzzleRender parallax ( puzzleNew, modelRecord.randomSeed )
             in
             ( Model
                 { modelRecord
@@ -985,7 +1031,7 @@ update msg ((Model modelRecord) as model) =
                                 Just position ->
                                     round
                                         (toFloat position.x / fontWidth - 7)
-                                        |> wordLeftClamp word
+                                        |> wordLeftClamp parallax word
 
                         leftNew2 =
                             if abs (leftNew1 - left) > parallax then
@@ -1014,7 +1060,7 @@ update msg ((Model modelRecord) as model) =
 
                         ( asciiNew, seed0 ) =
                             if moved then
-                                puzzleRender ( puzzleNew, modelRecord.randomSeed )
+                                puzzleRender parallax ( puzzleNew, modelRecord.randomSeed )
 
                             else
                                 ( modelRecord.ascii, modelRecord.randomSeed )
@@ -1031,6 +1077,33 @@ update msg ((Model modelRecord) as model) =
 
                 _ ->
                     ( model, Cmd.none )
+
+        ParallaxChange parallaxNewFloat ->
+            let
+                ( ascii, seed0 ) =
+                    -- ( List.repeat outputRows (String.repeat outputColumns "2"), seed0 )
+                    puzzleRender parallax ( modelRecord.puzzle, modelRecord.randomSeed )
+
+                parallaxNew =
+                    round parallaxNewFloat
+            in
+            ( Model
+                { modelRecord
+                    | parallax =
+                        Dictionary.intClampMinMax
+                            (minParallax modelRecord.puzzle)
+                            maxParallax
+                            parallaxNew
+                    , ascii =
+                        if parallax /= parallaxNew then
+                            ascii
+
+                        else
+                            modelRecord.ascii
+                    , randomSeed = seed0
+                }
+            , Cmd.none
+            )
 
         Noop ->
             ( model, Cmd.none )
@@ -1305,29 +1378,32 @@ imagePane ((Model modelRecord) as model) =
 editPane : Model -> List (Element Msg)
 editPane ((Model modelRecord) as model) =
     let
+        parallax =
+            modelRecord.parallax
+
         (Puzzle puzzle) =
             modelRecord.puzzle
 
         input : Int -> Element Msg
         input row =
             let
-                wordPlacementMaybe =
+                wordPlacement =
                     extractWordPlacement model (Just row) testColRank
+                        |> Maybe.withDefault emptyWordPlacement
             in
-            case ( row > List.length puzzle, wordPlacementMaybe ) of
+            case ( row >= List.length puzzle, wordPlacement ) of
                 ( True, _ ) ->
                     Element.none
 
-                -- End of recursion, bottom out
-                ( False, Nothing ) ->
-                    input (row + 1)
-
                 -- return no data for this level, just forward next.
-                ( False, Just (WordPlacement { word, left }) ) ->
+                ( False, WordPlacement { word, left } ) ->
                     let
+                        leftClean =
+                            wordLeftClamp parallax word left
+
                         offsetX =
                             toFloat editPaneRightOffset
-                                + toFloat left
+                                + toFloat leftClean
                                 * fontWidth
                                 -- |>Debug.log "moveRight"
                                 |> Element.moveRight
@@ -1340,17 +1416,18 @@ editPane ((Model modelRecord) as model) =
                     in
                     Input.text
                         ([ Element.spacing 0
-                         , Element.height <|
-                            Element.maximum inputHeight Element.fill
-                         , Element.width <|
-                            Element.maximum
-                                (toFloat (2 + maxMessageLength)
-                                    * fontWidth
-                                    + 10
-                                    |> round
-                                )
-                                Element.fill
-                         , Element.alpha 0.7
+                         , Element.maximum inputHeight Element.fill
+                            |> Element.height
+                         , Element.maximum
+                            (toFloat (2 + maxMessageLength parallax)
+                                * fontWidth
+                                + 10
+                                |> round
+                            )
+                            Element.fill
+                            |> Element.width
+
+                         --  , Element.alpha 0.7
                          , offsetX
                          , offsetY
                          , row
@@ -1359,17 +1436,15 @@ editPane ((Model modelRecord) as model) =
                             |> Element.inFront
                          ]
                             ++ selectEnable
-                            ++ (List.map
-                                    Html5.DragDrop.draggable
+                            ++ (Html5.DragDrop.draggable
                                     DragDropMsg
                                     row
-                                    |> Element.htmlAttribute
+                                    |> List.map Element.htmlAttribute
                                )
-                            ++ (List.map
-                                    Html5.DragDrop.droppable
+                            ++ (Html5.DragDrop.droppable
                                     DragDropMsg
                                     row
-                                    |> Element.htmlAttribute
+                                    |> List.map Element.htmlAttribute
                                )
                         )
                         { onChange = WordSet row testColRank
@@ -1465,7 +1540,7 @@ body ((Model modelRecord) as model) =
                         |> Element.maximum contentHeight
                     )
                 ]
-                (case modelRecord.tab of
+                ((case modelRecord.tab of
                     TabEdit ->
                         editPane model
 
@@ -1474,9 +1549,25 @@ body ((Model modelRecord) as model) =
 
                     TabImage ->
                         imagePane model
-                 -- [ Element.image [] { src = "https://i.imgur.com/2a2cUTH.jpg", description = "h4wt13" } ]
-                 -- [ Element.text "Canvas is hard D:"
-                 -- ]
+                 )
+                    ++ [ Input.slider
+                            [ Element.paddingXY 0 5
+                            ]
+                            { onChange = ParallaxChange
+                            , label =
+                                Element.text
+                                    ("parallax: "
+                                        ++ String.fromInt modelRecord.parallax
+                                    )
+                                    |> Input.labelAbove
+                                        []
+                            , min = toFloat (minParallax modelRecord.puzzle)
+                            , max = toFloat maxParallax
+                            , value = toFloat modelRecord.parallax
+                            , thumb = Input.defaultThumb
+                            , step = Just 1
+                            }
+                       ]
                 )
             ]
     ]
