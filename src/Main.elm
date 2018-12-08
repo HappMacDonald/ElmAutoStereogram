@@ -722,8 +722,9 @@ leftAndRightPairs2 wordLists length accumulator =
 
 leftAndRightPairs : LeftAndRightPairs
 leftAndRightPairs =
-    leftAndRightPairs2 Dictionary.dictionarySplitList 0
-    emptyPairOfPairList
+    leftAndRightPairs2 Dictionary.dictionarySplitList
+        0
+        emptyPairOfPairList
 
 
 extractWordPlacement : Model -> Maybe Int -> Int -> Maybe WordPlacement
