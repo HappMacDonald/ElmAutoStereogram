@@ -383,7 +383,12 @@ puzzleRender ( Puzzle puzzle, seed0 ) =
                                         parallaxFill ( "", seedA0 )
 
                                     ( offset, seedA2 ) =
-                                        Random.step (Random.int 0 (parallax - spaceWidth)) seedA1
+                                        Random.step
+                                            (Random.int
+                                                0
+                                                (parallax - spaceWidth)
+                                            )
+                                            seedA1
 
                                     -- x = Debug.log "passive" { sum = String.length pattern }
                                 in
@@ -403,10 +408,16 @@ puzzleRender ( Puzzle puzzle, seed0 ) =
                                         String.length word
 
                                     { leftLength, rightLength, leftWordPairs, rightWordPairs, seedA1 } =
-                                        calcLeftRightLength leftPairs rightPairs wordLength seedA0
+                                        calcLeftRightLength
+                                            leftPairs
+                                            rightPairs
+                                            wordLength
+                                            seedA0
 
                                     ( ( leftWord0, leftWord1 ), seedA2 ) =
-                                        Dictionary.listGetOne leftWordPairs seedA1
+                                        Dictionary.listGetOne
+                                            leftWordPairs
+                                            seedA1
                                             |> Tuple.mapFirst
                                                 (Dictionary.maybeLazyDefault
                                                     (\() ->
@@ -419,7 +430,9 @@ puzzleRender ( Puzzle puzzle, seed0 ) =
                                                 )
 
                                     ( ( rightWord0, rightWord1 ), seedA3 ) =
-                                        Dictionary.listGetOne rightWordPairs seedA2
+                                        Dictionary.listGetOne
+                                            rightWordPairs
+                                            seedA2
                                             -- |>Debug.log "Nothing?"
                                             |> Tuple.mapFirst
                                                 (Dictionary.maybeLazyDefault
@@ -612,7 +625,9 @@ leftAndRightPairs3 shortList longList =
                                 appendToChosenListInAListPairList newItem listPairList =
                                     let
                                         oldListPairList =
-                                            Dictionary.listGetElement shortLength listPairList
+                                            Dictionary.listGetElement
+                                                shortLength
+                                                listPairList
                                                 |> Maybe.withDefault []
 
                                         --x = Debug.log "?" (oldListPairList, shortLength, listPairList)
@@ -707,7 +722,30 @@ leftAndRightPairs2 wordLists length accumulator =
 
 leftAndRightPairs : LeftAndRightPairs
 leftAndRightPairs =
-    leftAndRightPairs2 Dictionary.dictionarySplitList 0 emptyPairOfPairList
+    leftAndRightPairs2 Dictionary.dictionarySplitList 0
+    emptyPairOfPairList
+
+
+extractWordPlacement : Model -> Maybe Int -> Int -> Maybe WordPlacement
+extractWordPlacement ((Model modelRecord) as model) maybeRow colRank =
+    let
+        (Puzzle puzzle) =
+            modelRecord.puzzle
+    in
+    case maybeRow of
+        Nothing ->
+            Nothing
+
+        Just row ->
+            case Dictionary.listGetElement row puzzle of
+                Nothing ->
+                    Nothing
+
+                Just [] ->
+                    Nothing
+
+                Just (wordPlacement :: _) ->
+                    Just wordPlacement
 
 
 init : Decode.Value -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -1321,14 +1359,16 @@ editPane ((Model modelRecord) as model) =
                          ]
                             ++ selectEnable
                             ++ (List.map
-                                    Element.htmlAttribute
-                                <|
-                                    Html5.DragDrop.draggable DragDropMsg row
+                                    Html5.DragDrop.draggable
+                                    DragDropMsg
+                                    row
+                                    |> Element.htmlAttribute
                                )
                             ++ (List.map
-                                    Element.htmlAttribute
-                                <|
-                                    Html5.DragDrop.droppable DragDropMsg row
+                                    Html5.DragDrop.droppable
+                                    DragDropMsg
+                                    row
+                                    |> Element.htmlAttribute
                                )
                         )
                         { onChange = WordSet row testColRank
@@ -1368,24 +1408,6 @@ editPane ((Model modelRecord) as model) =
     plainTextPane
         model
         (Just shade)
-
-
-
--- case modelRecord.puzzle of
---   Puzzle puzzle ->
---     puzzle
---     |>List.map
---         (\wordPlacements ->
---             case wordPlacements of
---               [] ->
---                 Element.text "\n"
---               WordPlacement wordPlacement :: _ ->
---                 Element.el
---                   [ Border.color ( uiRGB editBoxBorderColor )
---                   , Border.width 2
---                   ]
---                   ( Element.text wordPlacement.word )
---         )
 
 
 body : Model -> List (Html Msg)
@@ -1477,25 +1499,3 @@ testRow =
 
 testColRank =
     0
-
-
-extractWordPlacement : Model -> Maybe Int -> Int -> Maybe WordPlacement
-extractWordPlacement ((Model modelRecord) as model) maybeRow colRank =
-    let
-        (Puzzle puzzle) =
-            modelRecord.puzzle
-    in
-    case maybeRow of
-        Nothing ->
-            Nothing
-
-        Just row ->
-            case Dictionary.listGetElement row puzzle of
-                Nothing ->
-                    Nothing
-
-                Just [] ->
-                    Nothing
-
-                Just (wordPlacement :: _) ->
-                    Just wordPlacement
