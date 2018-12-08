@@ -560,12 +560,12 @@ type Model
 initialPuzzle : Puzzle
 initialPuzzle =
     Puzzle
-        [ []
-        , []
-        , []
-        , []
-        , []
-        , []
+        [ [ emptyWordPlacement ]
+        , [ emptyWordPlacement ]
+        , [ emptyWordPlacement ]
+        , [ emptyWordPlacement ]
+        , [ emptyWordPlacement ]
+        , [ emptyWordPlacement ]
         , [ WordPlacement
                 { word = "stop", left = 34 }
           ]
@@ -578,7 +578,7 @@ initialPuzzle =
         , [ WordPlacement
                 { word = "time", left = 38 }
           ]
-        , []
+        , [ emptyWordPlacement ]
         , [ WordPlacement
                 { word = "get", left = 60 }
           ]
@@ -588,15 +588,15 @@ initialPuzzle =
         , [ WordPlacement
                 { word = "life", left = 63 }
           ]
-        , []
-        , []
-        , []
-        , []
-        , []
-        , []
-        , []
-        , []
-        , []
+        , [ emptyWordPlacement ]
+        , [ emptyWordPlacement ]
+        , [ emptyWordPlacement ]
+        , [ emptyWordPlacement ]
+        , [ emptyWordPlacement ]
+        , [ emptyWordPlacement ]
+        , [ emptyWordPlacement ]
+        , [ emptyWordPlacement ]
+        , [ emptyWordPlacement ]
         ]
 
 

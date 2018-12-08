@@ -4367,6 +4367,8 @@ var author$project$ElmAutoStereogram$WordPlacement = function (a) {
 var elm$core$Basics$identity = function (x) {
 	return x;
 };
+var author$project$ElmAutoStereogram$emptyWordPlacement = author$project$ElmAutoStereogram$WordPlacement(
+	{left: 0, word: ''});
 var elm$core$Basics$EQ = {$: 'EQ'};
 var elm$core$Basics$LT = {$: 'LT'};
 var elm$core$Elm$JsArray$foldr = _JsArray_foldr;
@@ -4450,12 +4452,18 @@ var elm$core$Set$toList = function (_n0) {
 var author$project$ElmAutoStereogram$initialPuzzle = author$project$ElmAutoStereogram$Puzzle(
 	_List_fromArray(
 		[
-			_List_Nil,
-			_List_Nil,
-			_List_Nil,
-			_List_Nil,
-			_List_Nil,
-			_List_Nil,
+			_List_fromArray(
+			[author$project$ElmAutoStereogram$emptyWordPlacement]),
+			_List_fromArray(
+			[author$project$ElmAutoStereogram$emptyWordPlacement]),
+			_List_fromArray(
+			[author$project$ElmAutoStereogram$emptyWordPlacement]),
+			_List_fromArray(
+			[author$project$ElmAutoStereogram$emptyWordPlacement]),
+			_List_fromArray(
+			[author$project$ElmAutoStereogram$emptyWordPlacement]),
+			_List_fromArray(
+			[author$project$ElmAutoStereogram$emptyWordPlacement]),
 			_List_fromArray(
 			[
 				author$project$ElmAutoStereogram$WordPlacement(
@@ -4476,7 +4484,8 @@ var author$project$ElmAutoStereogram$initialPuzzle = author$project$ElmAutoStere
 				author$project$ElmAutoStereogram$WordPlacement(
 				{left: 38, word: 'time'})
 			]),
-			_List_Nil,
+			_List_fromArray(
+			[author$project$ElmAutoStereogram$emptyWordPlacement]),
 			_List_fromArray(
 			[
 				author$project$ElmAutoStereogram$WordPlacement(
@@ -4492,15 +4501,24 @@ var author$project$ElmAutoStereogram$initialPuzzle = author$project$ElmAutoStere
 				author$project$ElmAutoStereogram$WordPlacement(
 				{left: 63, word: 'life'})
 			]),
-			_List_Nil,
-			_List_Nil,
-			_List_Nil,
-			_List_Nil,
-			_List_Nil,
-			_List_Nil,
-			_List_Nil,
-			_List_Nil,
-			_List_Nil
+			_List_fromArray(
+			[author$project$ElmAutoStereogram$emptyWordPlacement]),
+			_List_fromArray(
+			[author$project$ElmAutoStereogram$emptyWordPlacement]),
+			_List_fromArray(
+			[author$project$ElmAutoStereogram$emptyWordPlacement]),
+			_List_fromArray(
+			[author$project$ElmAutoStereogram$emptyWordPlacement]),
+			_List_fromArray(
+			[author$project$ElmAutoStereogram$emptyWordPlacement]),
+			_List_fromArray(
+			[author$project$ElmAutoStereogram$emptyWordPlacement]),
+			_List_fromArray(
+			[author$project$ElmAutoStereogram$emptyWordPlacement]),
+			_List_fromArray(
+			[author$project$ElmAutoStereogram$emptyWordPlacement]),
+			_List_fromArray(
+			[author$project$ElmAutoStereogram$emptyWordPlacement])
 		]));
 var elm$core$Basics$sub = _Basics_sub;
 var author$project$Dictionary$decrement = function (value) {
@@ -6230,8 +6248,6 @@ var author$project$Dictionary$intClampMinMax = F3(
 	function (start, end, number) {
 		return (_Utils_cmp(number, start) < 0) ? start : ((_Utils_cmp(number, end) > 0) ? end : number);
 	});
-var author$project$ElmAutoStereogram$emptyWordPlacement = author$project$ElmAutoStereogram$WordPlacement(
-	{left: 0, word: ''});
 var author$project$ElmAutoStereogram$extractWordPlacement = F3(
 	function (model, maybeRow, colRank) {
 		var modelRecord = model.a;
